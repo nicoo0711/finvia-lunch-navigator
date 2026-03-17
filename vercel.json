@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/scrape?secret=DEIN_CRON_SECRET",
+      "schedule": "0 9 * * 1-5"
+    }
+  ]
+}
