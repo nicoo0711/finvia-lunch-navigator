@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
   try {
     const sandwicherMenu = await scrapeSandwicher()
     await saveMenu(sandwicherMenu)
-    results.sandwicher = `OK – ${sandwicherMenu.days.length} Tage gescrapt (${sandwicherMenu.days.map(d => d.date + ':' + d.items.length + 'items').join(',')})`
+    results.sandwicher = `OK – ${sandwicherMenu.days.length} Tage | debug: ${JSON.stringify((sandwicherMenu as any).debug)}`
   } catch (e) {
     results.sandwicher = `Fehler: ${String(e)}`
   }

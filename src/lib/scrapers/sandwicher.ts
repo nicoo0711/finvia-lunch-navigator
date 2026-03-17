@@ -102,7 +102,7 @@ export async function scrapeSandwicher(): Promise<RestaurantMenu> {
     })
 
     const days: DayMenu[] = items.length > 0 ? [{ date, items }] : []
-    return { restaurantId: 'sandwicher', lastUpdated: new Date().toISOString(), days }
+    return { restaurantId: 'sandwicher', lastUpdated: new Date().toISOString(), days, debug: { todayLabel, date, textPreview: text.slice(0, 300) } } as any
 
   } finally {
     await browser.close()
