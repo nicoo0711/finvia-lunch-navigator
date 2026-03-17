@@ -47,7 +47,7 @@ export async function scrapeSandwicher(): Promise<RestaurantMenu> {
 
   const browser = await puppeteer.launch({
     args: chromium.args,
-    defaultViewport: chromium.defaultViewport,
+    defaultViewport: { width: 1280, height: 800 },
     executablePath: await chromium.executablePath(
       'https://github.com/Sparticuz/chromium/releases/download/v131.0.1/chromium-v131.0.1-pack.tar'
     ),
