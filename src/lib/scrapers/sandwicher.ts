@@ -1,4 +1,3 @@
-import * as cheerio from 'cheerio'
 import { DayMenu, MenuItem, RestaurantMenu } from '../types'
 
 function parsePrice(text: string): number {
@@ -29,48 +28,70 @@ function parseDate(text: string): string | null {
   return `${match[3]}-${month}-${match[1].padStart(2, '0')}`
 }
 
+const DAY_LABELS: Record<number, string> = {
+  1: 'Montag',
+  2: 'Dienstag',
+  3: 'Mittwoch',
+  4: 'Donnerstag',
+  5: 'Freitag',
+}
+
 export async function scrapeSandwicher(): Promise<RestaurantMenu> {
-  const res = await fetch('https://www.sandwicher.de', {
-    headers: { 'User-Agent': 'Mozilla/5.0 (compatible; FINVIALunchBot/1.0)' },
+  const chromium = (await import('@sparticuz/chromium-min')).default
+  const puppeteer = (await import('puppeteer-core')).default
+
+  const todayDow = new Date().toLocaleDateString('en-US', { timeZone: 'Europe/Berlin', weekday: 'long' })
+  const dowMap: Record<string, number> = { Monday: 1, Tuesday: 2, Wednesday: 3, Thursday: 4, Friday: 5 }
+  const todayIndex = dowMap[todayDow]
+  const todayLabel = DAY_LABELS[todayIndex]
+
+  const browser = await puppeteer.launch({
+    args: chromium.args,
+    defaultViewport: chromium.defaultViewport,
+    executablePath: await chromium.executablePath(
+      'https://github.com/Sparticuz/chromium/releases/download/v131.0.1/chromium-v131.0.1-pack.tar'
+    ),
+    headless: true,
   })
-  const html = await res.text()
 
-  // Decode HTML entities
-  const decoded = html
-    .replace(/&auml;/g, 'ä').replace(/&ouml;/g, 'ö').replace(/&uuml;/g, 'ü')
-    .replace(/&Auml;/g, 'Ä').replace(/&Ouml;/g, 'Ö').replace(/&Uuml;/g, 'Ü')
-    .replace(/&szlig;/g, 'ß').replace(/&euro;/g, '€').replace(/&#39;/g, "'")
-    .replace(/&nbsp;/g, ' ').replace(/&gt;/g, '>').replace(/&amp;/g, '&')
+  try {
+    const page = await browser.newPage()
+    await page.goto('https://www.sandwicher.de', { waitUntil: 'networkidle2', timeout: 30000 })
 
-  // Find the "Was gibt's heute?" section
-  const heuteIdx = decoded.indexOf("gibt's heute")
-  if (heuteIdx === -1) return { restaurantId: 'sandwicher', lastUpdated: new Date().toISOString(), days: [] }
-
-  const section = decoded.slice(heuteIdx, heuteIdx + 3000)
-  const $ = cheerio.load(section)
-  const text = $.text()
-
-  const date = parseDate(text)
-  if (!date) return { restaurantId: 'sandwicher', lastUpdated: new Date().toISOString(), days: [] }
-
-  const items: MenuItem[] = []
-  const lines = text.split(/[\n​]+/).map(l => l.trim()).filter(l => l.length > 3)
-
-  lines.forEach((line) => {
-    const price = parsePrice(line)
-    if (price > 0) {
-      const name = line.replace(/([\d]+[.,][\d]+)\s*€/, '').trim()
-      if (name.length > 3) {
-        items.push({ name, price, tags: parseTags(name) })
+    // Click on today's day navigation dot
+    if (todayLabel) {
+      const navSelector = `[aria-label="${todayLabel}"]`
+      const navEl = await page.$(navSelector)
+      if (navEl) {
+        await navEl.click()
+        await new Promise(r => setTimeout(r, 1500))
       }
     }
-  })
 
-  const days: DayMenu[] = items.length > 0 ? [{ date, items }] : []
+    // Extract text from the "Was gibt's heute?" section
+    const text = await page.evaluate(() => {
+      const body = document.body.innerText
+      const idx = body.indexOf("gibt's heute")
+      return idx >= 0 ? body.slice(idx, idx + 2000) : ''
+    })
 
-  return {
-    restaurantId: 'sandwicher',
-    lastUpdated: new Date().toISOString(),
-    days,
+    const date = parseDate(text)
+    if (!date) return { restaurantId: 'sandwicher', lastUpdated: new Date().toISOString(), days: [] }
+
+    const items: MenuItem[] = []
+    const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 3)
+    lines.forEach((line) => {
+      const price = parsePrice(line)
+      if (price > 0) {
+        const name = line.replace(/([\d]+[.,][\d]+)\s*€/, '').trim()
+        if (name.length > 3) items.push({ name, price, tags: parseTags(name) })
+      }
+    })
+
+    const days: DayMenu[] = items.length > 0 ? [{ date, items }] : []
+    return { restaurantId: 'sandwicher', lastUpdated: new Date().toISOString(), days }
+
+  } finally {
+    await browser.close()
   }
 }
