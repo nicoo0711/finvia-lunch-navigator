@@ -3,6 +3,8 @@ import { scrapeIlling } from '@/lib/scrapers/illing'
 import { scrapeSandwicher } from '@/lib/scrapers/sandwicher'
 import { saveMenu } from '@/lib/store'
 
+export const maxDuration = 60
+
 export async function GET(req: NextRequest) {
   // Protect with cron secret in production
   const secret = req.nextUrl.searchParams.get('secret')

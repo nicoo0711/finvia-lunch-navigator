@@ -59,8 +59,8 @@ export async function scrapeSandwicher(): Promise<RestaurantMenu> {
 
   try {
     const page = await browser.newPage()
-    await page.goto('https://www.sandwicher.de', { waitUntil: 'domcontentloaded', timeout: 30000 })
-    await new Promise(r => setTimeout(r, 5000))
+    await page.goto('https://www.sandwicher.de', { waitUntil: 'domcontentloaded', timeout: 20000 })
+    await new Promise(r => setTimeout(r, 3000))
 
     // Click on today's day navigation dot
     if (todayLabel) {
@@ -68,7 +68,7 @@ export async function scrapeSandwicher(): Promise<RestaurantMenu> {
       const navEl = await page.$(navSelector)
       if (navEl) {
         await navEl.click()
-        await new Promise(r => setTimeout(r, 3000))
+        await new Promise(r => setTimeout(r, 2000))
       }
     }
 
