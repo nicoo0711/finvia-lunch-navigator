@@ -1,12 +1,8 @@
 import * as cheerio from 'cheerio'
 import { DayMenu, MenuItem, RestaurantMenu } from '../types'
 
-const WEEKDAY_MAP: Record<string, string> = {
-  montag: 'Montag',
-  dienstag: 'Dienstag',
-  mittwoch: 'Mittwoch',
-  donnerstag: 'Donnerstag',
-  freitag: 'Freitag',
+const WEEKDAY_MAP: Record<string, number> = {
+  montag: 0, dienstag: 1, mittwoch: 2, donnerstag: 3, freitag: 4,
 }
 
 function parsePrice(text: string): number {
@@ -24,10 +20,9 @@ function parseTags(name: string): MenuItem['tags'] {
   return tags
 }
 
-// Get the ISO date for a given weekday in the current week (Mon=0)
 function getDateForWeekday(weekdayIndex: number): string {
   const now = new Date()
-  const day = now.getDay() // 0=Sun, 1=Mon...
+  const day = now.getDay()
   const monday = new Date(now)
   monday.setDate(now.getDate() - (day === 0 ? 6 : day - 1))
   monday.setDate(monday.getDate() + weekdayIndex)
@@ -42,34 +37,38 @@ export async function scrapeIlling(): Promise<RestaurantMenu> {
   const $ = cheerio.load(html)
 
   const days: DayMenu[] = []
-  let currentDayIndex = -1
 
-  // Each day is a heading (h2 or strong), followed by a table
-  $('h2, h3, strong').each((_, el) => {
+  // Find all headings and paragraphs that contain day names
+  $('h2, h3, p').each((_, el) => {
     const text = $(el).text().trim().toLowerCase().replace(':', '')
     const dayKey = Object.keys(WEEKDAY_MAP).find((d) => text.includes(d))
     if (!dayKey) return
 
-    currentDayIndex = Object.keys(WEEKDAY_MAP).indexOf(dayKey)
     const items: MenuItem[] = []
 
-    // Find the next table after this heading
-    const table = $(el).closest('h2, h3, p').nextAll('table').first()
-    table.find('tr').each((_, row) => {
-      const cellText = $(row).text().trim()
-      if (!cellText || cellText.toLowerCase().includes('ruhetag')) return
-      const price = parsePrice(cellText)
-      const name = cellText.replace(/EUR?\s*[\d.,]+/gi, '').trim()
-      if (name) {
-        items.push({ name, price, tags: parseTags(name) })
+    // The table may be inside a sibling div — search next siblings
+    let sibling = $(el).next()
+    for (let i = 0; i < 3; i++) {
+      if (!sibling.length) break
+      const table = sibling.is('table') ? sibling : sibling.find('table').first()
+      if (table.length) {
+        table.find('tr').each((_, row) => {
+          const cellText = $(row).text().trim()
+          if (!cellText || cellText.toLowerCase().includes('ruhetag')) return
+          const price = parsePrice(cellText)
+          const name = cellText.replace(/EUR?\s*[\d.,]+/gi, '').trim()
+          if (name) items.push({ name, price, tags: parseTags(name) })
+        })
+        break
       }
-    })
+      sibling = sibling.next()
+    }
 
     if (items.length > 0) {
-      days.push({
-        date: getDateForWeekday(currentDayIndex),
-        items,
-      })
+      const dayIndex = WEEKDAY_MAP[dayKey]
+      if (!days.find((d) => d.date === getDateForWeekday(dayIndex))) {
+        days.push({ date: getDateForWeekday(dayIndex), items })
+      }
     }
   })
 
