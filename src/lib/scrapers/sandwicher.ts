@@ -59,7 +59,8 @@ export async function scrapeSandwicher(): Promise<RestaurantMenu> {
 
   try {
     const page = await browser.newPage()
-    await page.goto('https://www.sandwicher.de', { waitUntil: 'networkidle2', timeout: 30000 })
+    await page.goto('https://www.sandwicher.de', { waitUntil: 'domcontentloaded', timeout: 30000 })
+    await new Promise(r => setTimeout(r, 5000))
 
     // Click on today's day navigation dot
     if (todayLabel) {
@@ -67,15 +68,16 @@ export async function scrapeSandwicher(): Promise<RestaurantMenu> {
       const navEl = await page.$(navSelector)
       if (navEl) {
         await navEl.click()
-        await new Promise(r => setTimeout(r, 1500))
+        await new Promise(r => setTimeout(r, 3000))
       }
     }
 
     // Extract text from the "Was gibt's heute?" section
     const text = await page.evaluate(() => {
-      const body = document.body.innerText
-      const idx = body.indexOf("gibt's heute")
-      return idx >= 0 ? body.slice(idx, idx + 2000) : ''
+      // Try innerText first, then textContent
+      const all = document.body.innerText || document.body.textContent || ''
+      const idx = all.indexOf("gibt's heute")
+      return idx >= 0 ? all.slice(idx, idx + 2000) : all.slice(0, 2000)
     })
 
     const date = parseDate(text)
