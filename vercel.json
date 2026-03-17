@@ -2,7 +2,7 @@
   "crons": [
     {
       "path": "/api/scrape?secret=finvia-cron-2026",
-      "schedule": "0 9 * * 1-5"
+      "schedule": "0 8 * * 1-5"
     }
   ]
 }

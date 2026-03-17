@@ -7,7 +7,7 @@ import styles from './page.module.css'
 type Filter = 'alle' | 'vegan' | 'vegetarisch' | 'glutenfrei' | 'unter10'
 
 function getTodayISO() {
-  return new Date().toISOString().split('T')[0]
+  return new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Berlin' })
 }
 
 function formatDate(iso: string) {
