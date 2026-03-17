@@ -15,6 +15,6 @@ export async function POST(req: NextRequest) {
     days: body.days,
   }
 
-  saveMenu(menu)
+  await saveMenu(menu)
   return NextResponse.json({ success: true })
 }
