@@ -17,13 +17,12 @@ function parseTags(name: string): MenuItem['tags'] {
 }
 
 function parseDate(text: string): string | null {
-  // e.g. "Dienstag, 17. März 2026"
   const months: Record<string, string> = {
     januar: '01', februar: '02', märz: '03', april: '04',
     mai: '05', juni: '06', juli: '07', august: '08',
     september: '09', oktober: '10', november: '11', dezember: '12',
   }
-  const match = text.match(/(\d{1,2})\.\s+(\w+)\s+(\d{4})/i)
+  const match = text.match(/(\d{1,2})\.\s*(\w+)\s*(\d{4})/i)
   if (!match) return null
   const month = months[match[2].toLowerCase()]
   if (!month) return null
@@ -35,60 +34,39 @@ export async function scrapeSandwicher(): Promise<RestaurantMenu> {
     headers: { 'User-Agent': 'Mozilla/5.0 (compatible; FINVIALunchBot/1.0)' },
   })
   const html = await res.text()
-  const $ = cheerio.load(html)
 
-  const days: DayMenu[] = []
+  // Decode HTML entities
+  const decoded = html
+    .replace(/&auml;/g, 'ä').replace(/&ouml;/g, 'ö').replace(/&uuml;/g, 'ü')
+    .replace(/&Auml;/g, 'Ä').replace(/&Ouml;/g, 'Ö').replace(/&Uuml;/g, 'Ü')
+    .replace(/&szlig;/g, 'ß').replace(/&euro;/g, '€').replace(/&#39;/g, "'")
+    .replace(/&nbsp;/g, ' ').replace(/&gt;/g, '>').replace(/&amp;/g, '&')
 
-  // Sandwicher shows each day in a slider section
-  // Each slide has a date and menu items
-  $('[data-hook="slide"], .slide, section').each((_, section) => {
-    const sectionText = $(section).text()
-    const date = parseDate(sectionText)
-    if (!date) return
+  // Find the "Was gibt's heute?" section
+  const heuteIdx = decoded.indexOf("gibt's heute")
+  if (heuteIdx === -1) return { restaurantId: 'sandwicher', lastUpdated: new Date().toISOString(), days: [] }
 
-    const items: MenuItem[] = []
-    const lines = sectionText
-      .split('\n')
-      .map((l) => l.trim())
-      .filter((l) => l.length > 3)
+  const section = decoded.slice(heuteIdx, heuteIdx + 3000)
+  const $ = cheerio.load(section)
+  const text = $.text()
 
-    lines.forEach((line) => {
-      const price = parsePrice(line)
-      if (price > 0) {
-        const name = line.replace(/([\d]+[.,][\d]+)\s*€/, '').trim()
-        if (name.length > 3) {
-          items.push({ name, price, tags: parseTags(name) })
-        }
-      }
-    })
+  const date = parseDate(text)
+  if (!date) return { restaurantId: 'sandwicher', lastUpdated: new Date().toISOString(), days: [] }
 
-    if (items.length > 0) {
-      // Avoid duplicate dates
-      if (!days.find((d) => d.date === date)) {
-        days.push({ date, items })
+  const items: MenuItem[] = []
+  const lines = text.split(/[\n​]+/).map(l => l.trim()).filter(l => l.length > 3)
+
+  lines.forEach((line) => {
+    const price = parsePrice(line)
+    if (price > 0) {
+      const name = line.replace(/([\d]+[.,][\d]+)\s*€/, '').trim()
+      if (name.length > 3) {
+        items.push({ name, price, tags: parseTags(name) })
       }
     }
   })
 
-  // Fallback: parse the whole page text for today's menu
-  if (days.length === 0) {
-    const bodyText = $('body').text()
-    const date = parseDate(bodyText)
-    if (date) {
-      const items: MenuItem[] = []
-      bodyText.split('\n').forEach((line) => {
-        line = line.trim()
-        const price = parsePrice(line)
-        if (price > 0) {
-          const name = line.replace(/([\d]+[.,][\d]+)\s*€/, '').trim()
-          if (name.length > 3) {
-            items.push({ name, price, tags: parseTags(name) })
-          }
-        }
-      })
-      if (items.length > 0) days.push({ date, items })
-    }
-  }
+  const days: DayMenu[] = items.length > 0 ? [{ date, items }] : []
 
   return {
     restaurantId: 'sandwicher',
