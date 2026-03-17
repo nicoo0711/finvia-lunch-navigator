@@ -22,10 +22,10 @@ export async function GET(req: NextRequest) {
 
   try {
     const sandwicherMenu = await scrapeSandwicher()
-    saveMenu(sandwicherMenu)
+    await saveMenu(sandwicherMenu)
     results.sandwicher = `OK – ${sandwicherMenu.days.length} Tage gescrapt`
   } catch (e) {
-    results.sandwicher = `Fehler: ${e}`
+    results.sandwicher = `Fehler: ${String(e)}`
   }
 
   return NextResponse.json({ success: true, results, time: new Date().toISOString() })

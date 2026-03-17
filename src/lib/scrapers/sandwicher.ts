@@ -45,12 +45,15 @@ export async function scrapeSandwicher(): Promise<RestaurantMenu> {
   const todayIndex = dowMap[todayDow]
   const todayLabel = DAY_LABELS[todayIndex]
 
+  const execPath = await chromium.executablePath(
+    'https://github.com/Sparticuz/chromium/releases/download/v131.0.1/chromium-v131.0.1-pack.tar'
+  )
+  if (!execPath) throw new Error('Chromium executable not found')
+
   const browser = await puppeteer.launch({
     args: chromium.args,
     defaultViewport: { width: 1280, height: 800 },
-    executablePath: await chromium.executablePath(
-      'https://github.com/Sparticuz/chromium/releases/download/v131.0.1/chromium-v131.0.1-pack.tar'
-    ),
+    executablePath: execPath,
     headless: true,
   })
 
