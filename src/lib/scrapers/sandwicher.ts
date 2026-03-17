@@ -21,7 +21,7 @@ function parseDate(text: string): string | null {
     mai: '05', juni: '06', juli: '07', august: '08',
     september: '09', oktober: '10', november: '11', dezember: '12',
   }
-  const match = text.match(/(\d{1,2})\.\s*(\w+)\s*(\d{4})/i)
+  const match = text.match(/(\d{1,2})\.\s*([a-zA-ZäöüÄÖÜ]+)\s*(\d{4})/i)
   if (!match) return null
   const month = months[match[2].toLowerCase()]
   if (!month) return null
