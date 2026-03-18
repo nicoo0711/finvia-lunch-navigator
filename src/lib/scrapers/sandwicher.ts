@@ -92,51 +92,23 @@ export async function scrapeSandwicher(): Promise<RestaurantMenu> {
     await page.goto('https://www.sandwicher.de', { waitUntil: 'domcontentloaded', timeout: 20000 })
     await new Promise(r => setTimeout(r, 3000))
 
-    // Click through all tabs once to ensure all slides are loaded into DOM
-    for (const label of WEEKDAY_LABELS) {
+    // Click each tab and extract its visible text immediately.
+    // Wix hides inactive slides with display:none, so innerText only returns
+    // text from the currently visible slide — we must read one tab at a time.
+    for (let i = 0; i < WEEKDAY_LABELS.length; i++) {
+      const label = WEEKDAY_LABELS[i]
       const navEl = await page.$(`[aria-label="${label}"]`)
       if (navEl) {
         await navEl.click()
         await new Promise(r => setTimeout(r, 1500))
       }
-    }
 
-    // Get full page text — all slides are in the DOM simultaneously
-    const fullText = await page.evaluate(() => {
-      return (document.body as HTMLElement).innerText || document.body.textContent || ''
-    })
-
-    // The date appears at the END of each day's slide (not the start).
-    // Strategy: find all date positions, then for each day take the text
-    // between the previous date and the current date — those are the items.
-    type DateEntry = { idx: number; expectedDate: string; germanDate: string }
-    const dateEntries: DateEntry[] = []
-
-    for (let i = 0; i < WEEKDAY_LABELS.length; i++) {
-      const expectedDate = getDateForWeekdayIndex(i)
-      const d = new Date(expectedDate + 'T12:00:00')
-      const germanDate = d.toLocaleDateString('de-DE', {
-        timeZone: 'Europe/Berlin',
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric',
+      const slideText = await page.evaluate(() => {
+        return (document.body as HTMLElement).innerText || ''
       })
-      const idx = fullText.indexOf(germanDate)
-      dateEntries.push({ idx, expectedDate, germanDate })
-    }
 
-    for (let i = 0; i < dateEntries.length; i++) {
-      const { idx: endIdx, expectedDate, germanDate } = dateEntries[i]
-      if (endIdx < 0) continue
-
-      // Start boundary: position right after the previous date (or 1200 chars back)
-      const prevPositions = dateEntries.slice(0, i).map(e => e.idx).filter(p => p >= 0)
-      const startIdx = prevPositions.length > 0 ? Math.max(...prevPositions) : Math.max(0, endIdx - 1200)
-
-      // Section: [prev_date?] ... [items] ... [this_date]
-      // parseItems skips first date, collects items, stops at second date
-      const section = fullText.slice(startIdx, endIdx + germanDate.length)
-      const items = parseItems(section)
+      const expectedDate = getDateForWeekdayIndex(i)
+      const items = parseItems(slideText)
       if (items.length > 0) days.push({ date: expectedDate, items })
     }
 
