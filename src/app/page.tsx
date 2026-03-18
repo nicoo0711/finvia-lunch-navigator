@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { RESTAURANTS, RestaurantMenu, DayMenu, MenuItem } from '@/lib/types'
+import { GambleWheel } from './GambleWheel'
 import styles from './page.module.css'
 
 type Filter = 'alle' | 'vegan' | 'vegetarisch' | 'glutenfrei' | 'unter10'
@@ -50,7 +51,7 @@ export default function Home() {
   const [refreshing, setRefreshing] = useState(false)
   const [refreshedAt, setRefreshedAt] = useState<string | null>(null)
   const [selectedDay, setSelectedDay] = useState(getTodayIndex)
-  const [activeTab, setActiveTab] = useState<'tageskarte' | 'restaurants'>('tageskarte')
+  const [activeTab, setActiveTab] = useState<'tageskarte' | 'restaurants' | 'gamble'>('tageskarte')
   const [expandedRestaurant, setExpandedRestaurant] = useState<string | null>(null)
   const weekDates = getWeekDates()
   const selectedDate = weekDates[selectedDay]
@@ -123,6 +124,12 @@ export default function Home() {
         >
           Restaurants
         </button>
+        <button
+          className={`${styles.mainTab} ${activeTab === 'gamble' ? styles.mainTabActive : ''}`}
+          onClick={() => setActiveTab('gamble')}
+        >
+          🎰 Gamble
+        </button>
       </div>
 
       <div className={styles.container}>
@@ -184,6 +191,10 @@ export default function Home() {
         </section>)}
 
         {/* Tageskarte */}
+        {activeTab === 'gamble' && (
+          <GambleWheel restaurants={RESTAURANTS} />
+        )}
+
         {activeTab === 'tageskarte' && (<section className={styles.dailySection}>
 
           {/* Day Tabs */}
