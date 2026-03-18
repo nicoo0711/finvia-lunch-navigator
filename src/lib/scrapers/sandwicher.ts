@@ -92,32 +92,36 @@ export async function scrapeSandwicher(): Promise<RestaurantMenu> {
     await page.goto('https://www.sandwicher.de', { waitUntil: 'domcontentloaded', timeout: 20000 })
     await new Promise(r => setTimeout(r, 3000))
 
-    // Click each day and extract menu
-    for (let i = 0; i < WEEKDAY_LABELS.length; i++) {
-      const label = WEEKDAY_LABELS[i]
-      const expectedDate = getDateForWeekdayIndex(i)
-
+    // Click through all tabs once to ensure all slides are loaded into DOM
+    for (const label of WEEKDAY_LABELS) {
       const navEl = await page.$(`[aria-label="${label}"]`)
-      if (!navEl) continue
-
-      // Try up to 3 times to load the correct slide
-      let items: MenuItem[] = []
-      for (let attempt = 0; attempt < 3; attempt++) {
+      if (navEl) {
         await navEl.click()
-        await new Promise(r => setTimeout(r, 3000))
-
-        const text = await page.evaluate(() => {
-          const all = (document.body as HTMLElement).innerText || document.body.textContent || ''
-          const idx = all.indexOf("gibt's heute")
-          return idx >= 0 ? all.slice(idx, idx + 2000) : all.slice(0, 3000)
-        })
-
-        if (text.includes(label)) {
-          items = parseItems(text)
-          break
-        }
+        await new Promise(r => setTimeout(r, 1500))
       }
+    }
 
+    // Get full page text — all slides are in the DOM simultaneously
+    const fullText = await page.evaluate(() => {
+      return (document.body as HTMLElement).innerText || document.body.textContent || ''
+    })
+
+    // Locate each day's section by its German date string and parse items from it
+    for (let i = 0; i < WEEKDAY_LABELS.length; i++) {
+      const expectedDate = getDateForWeekdayIndex(i)
+      const d = new Date(expectedDate + 'T12:00:00')
+      const germanDate = d.toLocaleDateString('de-DE', {
+        timeZone: 'Europe/Berlin',
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+      })
+
+      const idx = fullText.indexOf(germanDate)
+      if (idx < 0) continue
+
+      const section = fullText.slice(idx, idx + 1500)
+      const items = parseItems(section)
       if (items.length > 0) days.push({ date: expectedDate, items })
     }
 
