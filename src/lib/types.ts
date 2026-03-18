@@ -2,6 +2,7 @@ export type MenuItem = {
   name: string
   price: number
   tags: ('vegan' | 'vegetarisch' | 'glutenfrei')[]
+  category?: string
 }
 
 export type DayMenu = {
@@ -63,6 +64,18 @@ export const RESTAURANTS: Restaurant[] = [
     emoji: '🥩',
     color: '#FFF3E0',
     logo: 'https://www.google.com/s2/favicons?domain=block-house.de&sz=64',
+  },
+  {
+    id: 'edensgarden',
+    name: "Eden's Garden",
+    address: 'Kronberger Str. 9',
+    hours: 'Di–Do 11:00–14:00 Uhr',
+    url: 'https://edensgarden-restaurant.com/our-menu/',
+    scrapeType: 'auto',
+    menuType: 'weekly',
+    emoji: '🇪🇹',
+    color: '#E8F5E9',
+    logo: 'https://www.google.com/s2/favicons?domain=edensgarden-restaurant.com&sz=64',
   },
   {
     id: 'fresh74',

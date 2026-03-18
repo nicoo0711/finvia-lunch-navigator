@@ -87,6 +87,23 @@ export default function Home() {
               <p className={styles.subtitle}>FINVIA · {formatDate(selectedDate)}</p>
             </div>
           </div>
+          <button
+            className={styles.headerRefreshBtn}
+            disabled={refreshing}
+            onClick={() => {
+              setRefreshing(true)
+              setRefreshedAt(null)
+              fetch('/api/scrape?secret=finvia-cron-2026').finally(() => {
+                fetch('/api/menu').then((r) => r.json()).then((d) => {
+                  setMenus(d)
+                  setRefreshing(false)
+                  setRefreshedAt(new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }))
+                })
+              })
+            }}
+          >
+            {refreshing ? '⏳' : '↻ Neu laden'}
+          </button>
         </div>
       </header>
 
@@ -199,28 +216,47 @@ export default function Home() {
           })}
         </div>
 
-        {/* Refresh button */}
-        <div className={styles.refreshRow}>
-          <button
-            className={styles.refreshBtn}
-            disabled={refreshing}
-            onClick={() => {
-              setRefreshing(true)
-              setRefreshedAt(null)
-              fetch('/api/scrape?secret=finvia-cron-2026').finally(() => {
-                fetch('/api/menu').then((r) => r.json()).then((d) => {
-                  setMenus(d)
-                  setRefreshing(false)
-                  setRefreshedAt(new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }))
-                })
-              })
-            }}
-          >
-            {refreshing ? '⏳ Wird aktualisiert…' : 'Menüs neu laden'}
-          </button>
-          {refreshedAt && (
-            <p className={styles.refreshedAt}>✓ Aktualisiert um {refreshedAt} Uhr</p>
-          )}
+        {refreshedAt && (
+          <p className={styles.refreshedAt}>✓ Aktualisiert um {refreshedAt} Uhr</p>
+        )}
+
+        {/* Restaurantübersicht */}
+        <div className={styles.overviewSection}>
+          <h2 className={styles.sectionTitle}>Restaurantübersicht</h2>
+          <p className={styles.overviewSubtitle}>Alle Restaurants in der Nähe – unabhängig vom Tagesangebot</p>
+          <div className={styles.overviewGrid}>
+            {RESTAURANTS.map((restaurant) => {
+              const menu = menus.find((m) => m.restaurantId === restaurant.id)
+              const allItems = menu ? menu.days.flatMap((d) => d.items).filter((item, idx, arr) => arr.findIndex(x => x.name === item.name) === idx) : []
+              return (
+                <div key={restaurant.id} className={styles.overviewCard}>
+                  <div className={styles.overviewCardHeader}>
+                    <div className={styles.iconWrap} style={{ background: restaurant.color }}>
+                      {restaurant.logo
+                        ? <img src={restaurant.logo} alt={restaurant.name} width={28} height={28} style={{ borderRadius: 4, objectFit: 'contain' }} />
+                        : <span>{restaurant.emoji}</span>}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <h3 className={styles.overviewName}>{restaurant.name}</h3>
+                      <p className={styles.overviewMeta}>{restaurant.address} · {restaurant.hours}</p>
+                    </div>
+                    <a href={restaurant.url} target="_blank" rel="noreferrer" className={styles.overviewLink}>Website →</a>
+                  </div>
+                  {allItems.length > 0 && (
+                    <div className={styles.overviewItems}>
+                      {allItems.slice(0, 8).map((item, i) => (
+                        <div key={i} className={styles.overviewItem}>
+                          <span>{item.name}</span>
+                          {item.price > 0 && <span className={styles.overviewPrice}>{item.price.toFixed(2).replace('.', ',')} €</span>}
+                        </div>
+                      ))}
+                      {allItems.length > 8 && <p className={styles.overviewMore}>+{allItems.length - 8} weitere Gerichte</p>}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
         </div>
       </div>
     </main>

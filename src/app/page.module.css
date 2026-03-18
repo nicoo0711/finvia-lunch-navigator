@@ -224,18 +224,79 @@
 }
 .siteLink:hover { opacity: 0.7; }
 
-.refreshRow { text-align: center; margin-top: 2rem; }
-
-.refreshBtn {
+.headerRefreshBtn {
   font-size: 13px;
-  padding: 8px 24px;
+  padding: 6px 14px;
   border-radius: 999px;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--text-muted);
+  border: 1px solid rgba(255,255,255,0.4);
+  background: transparent;
+  color: rgba(255,255,255,0.9);
+  cursor: pointer;
   transition: all 0.15s;
+  white-space: nowrap;
 }
-.refreshBtn:hover:not(:disabled) { background: var(--accent-light); color: var(--text); border-color: var(--accent); }
-.refreshBtn:disabled { opacity: 0.6; cursor: not-allowed; }
+.headerRefreshBtn:hover:not(:disabled) { background: rgba(255,255,255,0.15); color: #fff; }
+.headerRefreshBtn:disabled { opacity: 0.6; cursor: not-allowed; }
 
-.refreshedAt { font-size: 13px; color: var(--green); margin-top: 8px; }
+.refreshedAt { font-size: 13px; color: var(--green); text-align: center; margin-top: 0.5rem; }
+
+.overviewSection {
+  margin-top: 3rem;
+  padding-top: 2rem;
+  border-top: 2px solid var(--border);
+}
+
+.overviewSubtitle {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-top: 4px;
+  margin-bottom: 1.25rem;
+}
+
+.overviewGrid { display: flex; flex-direction: column; gap: 1rem; }
+
+.overviewCard {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem 1.25rem;
+}
+
+.overviewCardHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.overviewName { font-size: 15px; font-weight: 500; color: var(--text); }
+.overviewMeta { font-size: 12px; color: var(--text-muted); margin-top: 1px; }
+
+.overviewLink {
+  font-size: 12px;
+  color: var(--accent);
+  font-weight: 500;
+  white-space: nowrap;
+  margin-left: auto;
+}
+.overviewLink:hover { opacity: 0.7; }
+
+.overviewItems {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.overviewItem {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  color: var(--text-muted);
+  gap: 8px;
+}
+
+.overviewPrice { white-space: nowrap; font-weight: 500; }
+
+.overviewMore { font-size: 12px; color: var(--text-muted); font-style: italic; margin-top: 4px; }

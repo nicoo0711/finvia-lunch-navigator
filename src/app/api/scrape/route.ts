@@ -3,6 +3,7 @@ import { scrapeIlling } from '@/lib/scrapers/illing'
 import { scrapeSandwicher } from '@/lib/scrapers/sandwicher'
 import { scrapeFresh74 } from '@/lib/scrapers/fresh74'
 import { scrapeBlockHouse } from '@/lib/scrapers/blockhouse'
+import { scrapeEdensGarden } from '@/lib/scrapers/edensgarden'
 import { saveMenu, mergeMenu } from '@/lib/store'
 
 export const maxDuration = 60
@@ -15,6 +16,14 @@ export async function GET(req: NextRequest) {
   }
 
   const results: Record<string, string> = {}
+
+  try {
+    const edensMenu = await scrapeEdensGarden()
+    await saveMenu(edensMenu)
+    results.edensgarden = `OK – ${edensMenu.days.length} Tage gescrapt`
+  } catch (e) {
+    results.edensgarden = `Fehler: ${String(e)}`
+  }
 
   try {
     const blockhouseMenu = await scrapeBlockHouse()
