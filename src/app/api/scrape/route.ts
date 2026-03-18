@@ -31,9 +31,10 @@ export async function GET(req: NextRequest) {
     results.sandwicher = `Fehler: ${String(e)}`
   }
 
-  // fresh74 only on Mondays (menu changes weekly)
+  // fresh74 only on Mondays (menu changes weekly), or when forced
   const dow = new Date().toLocaleDateString('en-US', { timeZone: 'Europe/Berlin', weekday: 'long' })
-  if (dow === 'Monday') {
+  const forceFresh74 = req.nextUrl.searchParams.get('force_fresh74') === '1'
+  if (dow === 'Monday' || forceFresh74) {
     try {
       const fresh74Menu = await scrapeFresh74()
       await saveMenu(fresh74Menu)
