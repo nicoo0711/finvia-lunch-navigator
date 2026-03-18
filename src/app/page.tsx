@@ -157,7 +157,9 @@ export default function Home() {
                       {displayItems.slice(0, 8).map((item, i) => (
                         <div key={i} className={styles.nearbyItem}>
                           <span>{item.name}</span>
-                          {item.price && item.price > 0 && <span className={styles.nearbyPrice}>{item.price.toFixed(2).replace('.', ',')} €</span>}
+                          <span className={styles.nearbyPrice}>
+                            {item.price && item.price > 0 ? `${item.price.toFixed(2).replace('.', ',')} €` : '–'}
+                          </span>
                         </div>
                       ))}
                       {displayItems.length > 8 && <p className={styles.nearbyMore}>+{displayItems.length - 8} weitere</p>}
