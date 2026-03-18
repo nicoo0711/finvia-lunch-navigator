@@ -109,26 +109,68 @@ export default function Home() {
 
       <div className={styles.container}>
 
-        {/* Day Tabs */}
-        <div className={styles.dayTabs}>
-          {WEEKDAYS.map((wd, i) => {
-            const dateShort = new Date(weekDates[i] + 'T12:00:00').toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })
-            return (
-              <button
-                key={i}
-                className={`${styles.dayTab} ${selectedDay === i ? styles.dayTabActive : ''}`}
-                onClick={() => setSelectedDay(i)}
-              >
-                <span className={styles.dayTabLabel}>{wd.label}</span>
-                <span className={styles.dayTabDate}>{dateShort}</span>
-              </button>
-            )
-          })}
-        </div>
+        {/* Restaurants in der Nähe */}
+        <section className={styles.nearbySection}>
+          <h2 className={styles.sectionTitle}>Restaurants in der Nähe</h2>
+          <div className={styles.nearbyGrid}>
+            {RESTAURANTS.map((restaurant) => {
+              const menu = menus.find((m) => m.restaurantId === restaurant.id)
+              const allItems = menu
+                ? menu.days.flatMap((d) => d.items).filter((item, idx, arr) => arr.findIndex(x => x.name === item.name) === idx)
+                : []
+              return (
+                <div key={restaurant.id} className={styles.nearbyCard}>
+                  <div className={styles.nearbyCardHeader}>
+                    <div className={styles.iconWrap} style={{ background: restaurant.color }}>
+                      {restaurant.logo
+                        ? <img src={restaurant.logo} alt={restaurant.name} width={28} height={28} style={{ borderRadius: 4, objectFit: 'contain' }} />
+                        : <span>{restaurant.emoji}</span>}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <h3 className={styles.nearbyName}>{restaurant.name}</h3>
+                      <p className={styles.nearbyMeta}>{restaurant.address} · {restaurant.hours}</p>
+                    </div>
+                    <a href={restaurant.url} target="_blank" rel="noreferrer" className={styles.siteLink}>Website →</a>
+                  </div>
+                  {allItems.length > 0 && (
+                    <div className={styles.nearbyItems}>
+                      {allItems.slice(0, 6).map((item, i) => (
+                        <div key={i} className={styles.nearbyItem}>
+                          <span>{item.name}</span>
+                          {item.price > 0 && <span className={styles.nearbyPrice}>{item.price.toFixed(2).replace('.', ',')} €</span>}
+                        </div>
+                      ))}
+                      {allItems.length > 6 && <p className={styles.nearbyMore}>+{allItems.length - 6} weitere</p>}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </section>
 
-        {/* Section heading + Filter Bar */}
-        <div className={styles.sectionHeader}>
-          <h2 className={styles.sectionTitle}>Tagesgerichte</h2>
+        {/* Tageskarte */}
+        <section className={styles.dailySection}>
+          <h2 className={styles.sectionTitle}>Tageskarte</h2>
+
+          {/* Day Tabs */}
+          <div className={styles.dayTabs}>
+            {WEEKDAYS.map((wd, i) => {
+              const dateShort = new Date(weekDates[i] + 'T12:00:00').toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })
+              return (
+                <button
+                  key={i}
+                  className={`${styles.dayTab} ${selectedDay === i ? styles.dayTabActive : ''}`}
+                  onClick={() => setSelectedDay(i)}
+                >
+                  <span className={styles.dayTabLabel}>{wd.label}</span>
+                  <span className={styles.dayTabDate}>{dateShort}</span>
+                </button>
+              )
+            })}
+          </div>
+
+          {/* Filter Bar */}
           <div className={styles.filters}>
             {(['alle', 'vegan', 'vegetarisch', 'glutenfrei', 'unter10'] as Filter[]).map((f) => (
               <button
@@ -140,124 +182,85 @@ export default function Home() {
               </button>
             ))}
           </div>
-        </div>
 
-        {loading && <p className={styles.loading}>Menüs werden geladen…</p>}
+          {loading && <p className={styles.loading}>Menüs werden geladen…</p>}
 
-        {/* Restaurant Cards */}
-        <div className={styles.cards}>
-          {RESTAURANTS.map((restaurant) => {
-            const dayMenu = getMenuForDate(restaurant.id, restaurant.menuType === 'weekly')
-            const lastUpdated = getLastUpdated(restaurant.id)
-            const filtered = dayMenu ? filterItems(dayMenu.items, filter) : []
-            const hasItems = filtered.length > 0
-
-            return (
-              <div
-                key={restaurant.id}
-                className={`${styles.card} ${!hasItems && filter !== 'alle' ? styles.dimmed : ''}`}
-              >
-                <div className={styles.cardHeader}>
-                  <div className={styles.iconWrap} style={{ background: restaurant.color }}>
-                    {restaurant.logo
-                      ? <img src={restaurant.logo} alt={restaurant.name} width={32} height={32} style={{ borderRadius: 4, objectFit: 'contain' }} />
-                      : <span>{restaurant.emoji}</span>}
-                  </div>
-                  <div>
-                    <h2 className={styles.restaurantName}>{restaurant.name}</h2>
-                    <p className={styles.restaurantMeta}>{restaurant.address} · {restaurant.hours}</p>
-                  </div>
-                  {restaurant.scrapeType === 'manual' && (
-                    <span className={styles.manualBadge}>manuell</span>
-                  )}
-                </div>
-
-                {!dayMenu || filtered.length === 0 ? (
-                  <div className={styles.empty}>
-                    {filter !== 'alle'
-                      ? 'Keine Gerichte für diesen Filter.'
-                      : restaurant.scrapeType === 'manual'
-                      ? 'Noch nicht eingetragen – bitte im Admin-Bereich ergänzen.'
-                      : 'Kein Menü verfügbar.'}
-                  </div>
-                ) : (
-                  <div className={styles.menuList}>
-                    {filtered.map((item, i) => (
-                      <div key={i} className={styles.menuItem}>
-                        <div className={styles.menuName}>
-                          {item.name}
-                          <span className={styles.tagRow}>
-                            {item.tags.map((t) => (
-                              <span key={t} className={`${styles.tag} ${styles[t]}`}>{t}</span>
-                            ))}
-                          </span>
-                        </div>
-                        <div className={styles.menuPrice}>
-                          {item.price > 0 ? `${item.price.toFixed(2).replace('.', ',')} €` : '–'}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                <div className={styles.cardFooter}>
-                  <span className={styles.statusDot} />
-                  <span className={styles.statusText}>
-                    {lastUpdated
-                      ? `Aktualisiert: ${new Date(lastUpdated).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} Uhr`
-                      : 'Noch nicht geladen'}
-                  </span>
-                  <a href={restaurant.url} target="_blank" rel="noreferrer" className={styles.siteLink}>
-                    Zur Website →
-                  </a>
-                </div>
-              </div>
-            )
-          })}
-        </div>
-
-        {refreshedAt && (
-          <p className={styles.refreshedAt}>✓ Aktualisiert um {refreshedAt} Uhr</p>
-        )}
-
-        {/* Restaurantübersicht */}
-        <div className={styles.overviewSection}>
-          <h2 className={styles.sectionTitle}>Restaurantübersicht</h2>
-          <p className={styles.overviewSubtitle}>Alle Restaurants in der Nähe – unabhängig vom Tagesangebot</p>
-          <div className={styles.overviewGrid}>
+          {/* Restaurant Cards */}
+          <div className={styles.cards}>
             {RESTAURANTS.map((restaurant) => {
-              const menu = menus.find((m) => m.restaurantId === restaurant.id)
-              const allItems = menu ? menu.days.flatMap((d) => d.items).filter((item, idx, arr) => arr.findIndex(x => x.name === item.name) === idx) : []
+              const dayMenu = getMenuForDate(restaurant.id, restaurant.menuType === 'weekly')
+              const lastUpdated = getLastUpdated(restaurant.id)
+              const filtered = dayMenu ? filterItems(dayMenu.items, filter) : []
+              const hasItems = filtered.length > 0
+
               return (
-                <div key={restaurant.id} className={styles.overviewCard}>
-                  <div className={styles.overviewCardHeader}>
+                <div
+                  key={restaurant.id}
+                  className={`${styles.card} ${!hasItems && filter !== 'alle' ? styles.dimmed : ''}`}
+                >
+                  <div className={styles.cardHeader}>
                     <div className={styles.iconWrap} style={{ background: restaurant.color }}>
                       {restaurant.logo
-                        ? <img src={restaurant.logo} alt={restaurant.name} width={28} height={28} style={{ borderRadius: 4, objectFit: 'contain' }} />
+                        ? <img src={restaurant.logo} alt={restaurant.name} width={32} height={32} style={{ borderRadius: 4, objectFit: 'contain' }} />
                         : <span>{restaurant.emoji}</span>}
                     </div>
-                    <div style={{ flex: 1 }}>
-                      <h3 className={styles.overviewName}>{restaurant.name}</h3>
-                      <p className={styles.overviewMeta}>{restaurant.address} · {restaurant.hours}</p>
+                    <div>
+                      <h2 className={styles.restaurantName}>{restaurant.name}</h2>
+                      <p className={styles.restaurantMeta}>{restaurant.address} · {restaurant.hours}</p>
                     </div>
-                    <a href={restaurant.url} target="_blank" rel="noreferrer" className={styles.overviewLink}>Website →</a>
+                    {restaurant.scrapeType === 'manual' && (
+                      <span className={styles.manualBadge}>manuell</span>
+                    )}
                   </div>
-                  {allItems.length > 0 && (
-                    <div className={styles.overviewItems}>
-                      {allItems.slice(0, 8).map((item, i) => (
-                        <div key={i} className={styles.overviewItem}>
-                          <span>{item.name}</span>
-                          {item.price > 0 && <span className={styles.overviewPrice}>{item.price.toFixed(2).replace('.', ',')} €</span>}
+
+                  {!dayMenu || filtered.length === 0 ? (
+                    <div className={styles.empty}>
+                      {filter !== 'alle'
+                        ? 'Keine Gerichte für diesen Filter.'
+                        : restaurant.scrapeType === 'manual'
+                        ? 'Noch nicht eingetragen – bitte im Admin-Bereich ergänzen.'
+                        : 'Kein Menü verfügbar.'}
+                    </div>
+                  ) : (
+                    <div className={styles.menuList}>
+                      {filtered.map((item, i) => (
+                        <div key={i} className={styles.menuItem}>
+                          <div className={styles.menuName}>
+                            {item.name}
+                            <span className={styles.tagRow}>
+                              {item.tags.map((t) => (
+                                <span key={t} className={`${styles.tag} ${styles[t]}`}>{t}</span>
+                              ))}
+                            </span>
+                          </div>
+                          <div className={styles.menuPrice}>
+                            {item.price > 0 ? `${item.price.toFixed(2).replace('.', ',')} €` : '–'}
+                          </div>
                         </div>
                       ))}
-                      {allItems.length > 8 && <p className={styles.overviewMore}>+{allItems.length - 8} weitere Gerichte</p>}
                     </div>
                   )}
+
+                  <div className={styles.cardFooter}>
+                    <span className={styles.statusDot} />
+                    <span className={styles.statusText}>
+                      {lastUpdated
+                        ? `Aktualisiert: ${new Date(lastUpdated).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} Uhr`
+                        : 'Noch nicht geladen'}
+                    </span>
+                    <a href={restaurant.url} target="_blank" rel="noreferrer" className={styles.siteLink}>
+                      Zur Website →
+                    </a>
+                  </div>
                 </div>
               )
             })}
           </div>
-        </div>
+
+          {refreshedAt && (
+            <p className={styles.refreshedAt}>✓ Aktualisiert um {refreshedAt} Uhr</p>
+          )}
+        </section>
       </div>
     </main>
   )

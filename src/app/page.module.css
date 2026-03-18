@@ -51,7 +51,8 @@
 .dayTabs {
   display: flex;
   gap: 6px;
-  margin-bottom: 1.5rem;
+  margin-top: 1rem;
+  margin-bottom: 1rem;
   border-bottom: 2px solid var(--border);
   padding-bottom: 0;
 }
@@ -102,6 +103,7 @@
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
+  margin-bottom: 1.25rem;
 }
 
 .filterBtn {
@@ -240,47 +242,31 @@
 
 .refreshedAt { font-size: 13px; color: var(--green); text-align: center; margin-top: 0.5rem; }
 
-.overviewSection {
-  margin-top: 3rem;
-  padding-top: 2rem;
-  border-top: 2px solid var(--border);
+.nearbySection {
+  margin-bottom: 2.5rem;
+  padding-bottom: 2.5rem;
+  border-bottom: 2px solid var(--border);
 }
 
-.overviewSubtitle {
-  font-size: 13px;
-  color: var(--text-muted);
-  margin-top: 4px;
-  margin-bottom: 1.25rem;
-}
+.nearbyGrid { display: flex; flex-direction: column; gap: 0.75rem; margin-top: 1rem; }
 
-.overviewGrid { display: flex; flex-direction: column; gap: 1rem; }
-
-.overviewCard {
+.nearbyCard {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 1rem 1.25rem;
 }
 
-.overviewCardHeader {
+.nearbyCardHeader {
   display: flex;
   align-items: center;
   gap: 10px;
 }
 
-.overviewName { font-size: 15px; font-weight: 500; color: var(--text); }
-.overviewMeta { font-size: 12px; color: var(--text-muted); margin-top: 1px; }
+.nearbyName { font-size: 15px; font-weight: 500; color: var(--text); }
+.nearbyMeta { font-size: 12px; color: var(--text-muted); margin-top: 1px; }
 
-.overviewLink {
-  font-size: 12px;
-  color: var(--accent);
-  font-weight: 500;
-  white-space: nowrap;
-  margin-left: auto;
-}
-.overviewLink:hover { opacity: 0.7; }
-
-.overviewItems {
+.nearbyItems {
   margin-top: 0.75rem;
   padding-top: 0.75rem;
   border-top: 1px solid var(--border);
@@ -289,7 +275,7 @@
   gap: 4px;
 }
 
-.overviewItem {
+.nearbyItem {
   display: flex;
   justify-content: space-between;
   font-size: 13px;
@@ -297,6 +283,7 @@
   gap: 8px;
 }
 
-.overviewPrice { white-space: nowrap; font-weight: 500; }
+.nearbyPrice { white-space: nowrap; font-weight: 500; }
+.nearbyMore { font-size: 12px; color: var(--text-muted); font-style: italic; margin-top: 4px; }
 
-.overviewMore { font-size: 12px; color: var(--text-muted); font-style: italic; margin-top: 4px; }
+.dailySection { }
