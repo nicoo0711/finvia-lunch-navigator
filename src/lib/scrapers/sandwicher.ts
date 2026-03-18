@@ -16,16 +16,21 @@ function parseTags(name: string): MenuItem['tags'] {
 }
 
 function parseDate(text: string): string | null {
+  // Format: "18. März 2026"
   const months: Record<string, string> = {
     januar: '01', februar: '02', märz: '03', april: '04',
     mai: '05', juni: '06', juli: '07', august: '08',
     september: '09', oktober: '10', november: '11', dezember: '12',
   }
-  const match = text.match(/(\d{1,2})\.\s*([a-zA-ZäöüÄÖÜ]+)\s*(\d{4})/i)
-  if (!match) return null
-  const month = months[match[2].toLowerCase()]
-  if (!month) return null
-  return `${match[3]}-${month}-${match[1].padStart(2, '0')}`
+  const nameMatch = text.match(/(\d{1,2})\.\s*([a-zA-ZäöüÄÖÜ]+)\s*(\d{4})/i)
+  if (nameMatch) {
+    const month = months[nameMatch[2].toLowerCase()]
+    if (month) return `${nameMatch[3]}-${month}-${nameMatch[1].padStart(2, '0')}`
+  }
+  // Format: "18.03.2026"
+  const numMatch = text.match(/(\d{1,2})\.(\d{2})\.(\d{4})/)
+  if (numMatch) return `${numMatch[3]}-${numMatch[2]}-${numMatch[1].padStart(2, '0')}`
+  return null
 }
 
 function parseItems(text: string): MenuItem[] {
@@ -56,6 +61,15 @@ function parseItems(text: string): MenuItem[] {
 
 const WEEKDAY_LABELS = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag']
 
+function getDateForWeekdayIndex(i: number): string {
+  const now = new Date()
+  const day = now.getDay()
+  const monday = new Date(now)
+  monday.setDate(now.getDate() - (day === 0 ? 6 : day - 1))
+  monday.setDate(monday.getDate() + i)
+  return monday.toLocaleDateString('sv-SE', { timeZone: 'Europe/Berlin' })
+}
+
 export async function scrapeSandwicher(): Promise<RestaurantMenu> {
   const chromium = (await import('@sparticuz/chromium-min')).default
   const puppeteer = (await import('puppeteer-core')).default
@@ -79,7 +93,8 @@ export async function scrapeSandwicher(): Promise<RestaurantMenu> {
     await new Promise(r => setTimeout(r, 3000))
 
     // Scrape all 5 weekdays
-    for (const label of WEEKDAY_LABELS) {
+    for (let i = 0; i < WEEKDAY_LABELS.length; i++) {
+      const label = WEEKDAY_LABELS[i]
       const navEl = await page.$(`[aria-label="${label}"]`)
       if (!navEl) continue
 
@@ -101,8 +116,8 @@ export async function scrapeSandwicher(): Promise<RestaurantMenu> {
       })
 
       if (!text) continue
-      const date = parseDate(text)
-      if (!date) continue
+      // Fallback to calculated date if parsing fails
+      const date = parseDate(text) || getDateForWeekdayIndex(i)
       const items = parseItems(text)
       if (items.length > 0) days.push({ date, items })
     }
