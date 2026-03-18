@@ -89,8 +89,8 @@ export async function scrapeSandwicher(): Promise<RestaurantMenu> {
       return idx >= 0 ? all.slice(idx, idx + 2000) : all.slice(0, 2000)
     })
 
-    const date = parseDate(text)
-    if (!date) return { restaurantId: 'sandwicher', lastUpdated: new Date().toISOString(), days: [] }
+    // Always use today's Berlin date (don't rely on website text date)
+    const date = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Berlin' })
 
     const items: MenuItem[] = []
     const cleaned = text.replace(/\u200B/g, '')

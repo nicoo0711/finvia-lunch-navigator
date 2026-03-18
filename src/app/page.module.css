@@ -57,9 +57,12 @@
 }
 
 .dayTab {
-  font-size: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
   font-weight: 500;
-  padding: 8px 20px;
+  padding: 8px 16px;
   border-radius: 8px 8px 0 0;
   border: 1px solid transparent;
   border-bottom: none;
@@ -67,6 +70,7 @@
   color: var(--text-muted);
   margin-bottom: -2px;
   transition: all 0.15s;
+  flex: 1;
 }
 .dayTab:hover { color: var(--text); background: var(--accent-light); }
 .dayTabActive {
@@ -76,14 +80,8 @@
   border-bottom-color: var(--surface);
 }
 
-.dayTabShort { display: none; }
-.dayTabFull { display: inline; }
-
-@media (max-width: 480px) {
-  .dayTabShort { display: inline; }
-  .dayTabFull { display: none; }
-  .dayTab { padding: 8px 14px; }
-}
+.dayTabLabel { font-size: 14px; }
+.dayTabDate { font-size: 11px; opacity: 0.75; }
 
 .sectionHeader {
   display: flex;

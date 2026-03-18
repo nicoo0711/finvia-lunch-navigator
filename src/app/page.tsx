@@ -93,16 +93,19 @@ export default function Home() {
 
         {/* Day Tabs */}
         <div className={styles.dayTabs}>
-          {WEEKDAYS.map((wd, i) => (
-            <button
-              key={i}
-              className={`${styles.dayTab} ${selectedDay === i ? styles.dayTabActive : ''}`}
-              onClick={() => setSelectedDay(i)}
-            >
-              <span className={styles.dayTabShort}>{wd.label}</span>
-              <span className={styles.dayTabFull}>{wd.full}</span>
-            </button>
-          ))}
+          {WEEKDAYS.map((wd, i) => {
+            const dateShort = new Date(weekDates[i] + 'T12:00:00').toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })
+            return (
+              <button
+                key={i}
+                className={`${styles.dayTab} ${selectedDay === i ? styles.dayTabActive : ''}`}
+                onClick={() => setSelectedDay(i)}
+              >
+                <span className={styles.dayTabLabel}>{wd.label}</span>
+                <span className={styles.dayTabDate}>{dateShort}</span>
+              </button>
+            )
+          })}
         </div>
 
         {/* Section heading + Filter Bar */}
