@@ -1,8 +1,8 @@
 .main { min-height: 100vh; }
 
 .header {
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
+  background: #038B9B;
+  border-bottom: none;
   padding: 1.25rem 0;
   position: sticky;
   top: 0;
@@ -22,25 +22,25 @@
   font-family: var(--font-display);
   font-size: 24px;
   font-weight: 400;
-  color: var(--text);
+  color: #FFFFFF;
   letter-spacing: -0.02em;
 }
 
 .subtitle {
   font-size: 13px;
-  color: var(--text-muted);
+  color: rgba(255,255,255,0.75);
   margin-top: 2px;
 }
 
 .adminLink {
   font-size: 13px;
-  color: var(--text-muted);
-  border: 1px solid var(--border);
+  color: rgba(255,255,255,0.85);
+  border: 1px solid rgba(255,255,255,0.4);
   padding: 6px 14px;
   border-radius: 999px;
   transition: all 0.15s;
 }
-.adminLink:hover { background: var(--accent-light); color: var(--text); }
+.adminLink:hover { background: rgba(255,255,255,0.15); color: #fff; }
 
 .container {
   max-width: 800px;

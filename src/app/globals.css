@@ -3,17 +3,17 @@
 :root {
   --font-sans: 'DM Sans', sans-serif;
   --font-display: 'DM Serif Display', serif;
-  --bg: #F7F5F0;
+  --bg: #F2F9FA;
   --surface: #FFFFFF;
-  --border: #E8E4DC;
-  --text: #1A1814;
-  --text-muted: #7A756A;
-  --accent: #C8A96E;
-  --accent-light: #F5EDD8;
-  --green: #3B6D11;
-  --green-light: #EAF3DE;
-  --amber: #854F0B;
-  --amber-light: #FAEEDA;
+  --border: #D0E8EC;
+  --text: #0D2B30;
+  --text-muted: #5A8A91;
+  --accent: #038B9B;
+  --accent-light: #E0F4F7;
+  --green: #0F6E56;
+  --green-light: #E1F5EE;
+  --amber: #8A6A1A;
+  --amber-light: #FBF3DC;
   --danger: #A32D2D;
   --radius: 12px;
   --radius-sm: 8px;
