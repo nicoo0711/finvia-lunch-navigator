@@ -112,7 +112,7 @@ export const RESTAURANTS: Restaurant[] = [
     scrapeType: 'manual',
     emoji: '🌮',
     color: '#FFF8E1',
-    logo: 'https://www.google.com/s2/favicons?domain=yumas.de&sz=64',
+    logo: '/yumas-logo.svg',
     staticItems: [
       { name: 'Chicken Burrito', price: 13.50 },
       { name: 'Barbacoa Burrito', price: 14.00 },
@@ -136,7 +136,7 @@ export const RESTAURANTS: Restaurant[] = [
     scrapeType: 'manual',
     emoji: '🍛',
     color: '#FBE9E7',
-    logo: 'https://www.google.com/s2/favicons?domain=eatdoori.com&sz=64',
+    logo: 'https://eatdoori.com/wp-content/uploads/ED_Logo_2025_red_rgb-1536x1107.png',
     staticItems: [
       { name: 'Butter Chicken', price: 17.90 },
       { name: 'Chicken Tikka Masala', price: 17.90 },
