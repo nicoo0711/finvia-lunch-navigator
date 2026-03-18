@@ -42,6 +42,30 @@
 }
 .adminLink:hover { background: rgba(255,255,255,0.15); color: #fff; }
 
+.mainTabs {
+  background: #038B9B;
+  border-top: 1px solid rgba(255,255,255,0.15);
+  display: flex;
+}
+
+.mainTab {
+  flex: 1;
+  padding: 12px 0;
+  font-size: 14px;
+  font-weight: 500;
+  color: rgba(255,255,255,0.65);
+  background: transparent;
+  border: none;
+  border-bottom: 3px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.mainTab:hover { color: rgba(255,255,255,0.9); }
+.mainTabActive {
+  color: #fff;
+  border-bottom-color: #fff;
+}
+
 .container {
   max-width: 800px;
   margin: 0 auto;

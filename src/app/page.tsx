@@ -50,6 +50,7 @@ export default function Home() {
   const [refreshing, setRefreshing] = useState(false)
   const [refreshedAt, setRefreshedAt] = useState<string | null>(null)
   const [selectedDay, setSelectedDay] = useState(getTodayIndex)
+  const [activeTab, setActiveTab] = useState<'tageskarte' | 'restaurants'>('tageskarte')
   const weekDates = getWeekDates()
   const selectedDate = weekDates[selectedDay]
 
@@ -107,10 +108,26 @@ export default function Home() {
         </div>
       </header>
 
+      {/* Main Tabs */}
+      <div className={styles.mainTabs}>
+        <button
+          className={`${styles.mainTab} ${activeTab === 'tageskarte' ? styles.mainTabActive : ''}`}
+          onClick={() => setActiveTab('tageskarte')}
+        >
+          Tageskarte
+        </button>
+        <button
+          className={`${styles.mainTab} ${activeTab === 'restaurants' ? styles.mainTabActive : ''}`}
+          onClick={() => setActiveTab('restaurants')}
+        >
+          Restaurants
+        </button>
+      </div>
+
       <div className={styles.container}>
 
         {/* Restaurants in der Nähe */}
-        <section className={styles.nearbySection}>
+        {activeTab === 'restaurants' && (<section className={styles.nearbySection}>
           <h2 className={styles.sectionTitle}>Restaurants in der Nähe</h2>
           <div className={styles.nearbyGrid}>
             {RESTAURANTS.map((restaurant) => {
@@ -147,11 +164,10 @@ export default function Home() {
               )
             })}
           </div>
-        </section>
+        </section>)}
 
         {/* Tageskarte */}
-        <section className={styles.dailySection}>
-          <h2 className={styles.sectionTitle}>Tageskarte</h2>
+        {activeTab === 'tageskarte' && (<section className={styles.dailySection}>
 
           {/* Day Tabs */}
           <div className={styles.dayTabs}>
@@ -260,7 +276,7 @@ export default function Home() {
           {refreshedAt && (
             <p className={styles.refreshedAt}>✓ Aktualisiert um {refreshedAt} Uhr</p>
           )}
-        </section>
+        </section>)}
       </div>
     </main>
   )
