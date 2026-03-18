@@ -74,6 +74,6 @@ export const RESTAURANTS: Restaurant[] = [
     menuType: 'weekly',
     emoji: '🥗',
     color: '#E6F1FB',
-    logo: 'https://www.google.com/s2/favicons?domain=fresh74.de&sz=64',
+    logo: '/fresh74-logo.png',
   },
 ]
