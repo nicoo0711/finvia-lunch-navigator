@@ -132,9 +132,10 @@ export default function Home() {
           <div className={styles.nearbyGrid}>
             {RESTAURANTS.map((restaurant) => {
               const menu = menus.find((m) => m.restaurantId === restaurant.id)
-              const allItems = menu
+              const scrapedItems = menu
                 ? menu.days.flatMap((d) => d.items).filter((item, idx, arr) => arr.findIndex(x => x.name === item.name) === idx)
                 : []
+              const displayItems = restaurant.staticItems ?? scrapedItems
               return (
                 <div key={restaurant.id} className={styles.nearbyCard}>
                   <div className={styles.nearbyCardHeader}>
@@ -151,15 +152,15 @@ export default function Home() {
                   </div>
                   {['sandwicher', 'illing', 'fresh74'].includes(restaurant.id) ? (
                     <p className={styles.nearbyTageskarte} onClick={() => setActiveTab('tageskarte')}>→ Siehe Tageskarte</p>
-                  ) : allItems.length > 0 && (
+                  ) : displayItems.length > 0 && (
                     <div className={styles.nearbyItems}>
-                      {allItems.slice(0, 6).map((item, i) => (
+                      {displayItems.slice(0, 8).map((item, i) => (
                         <div key={i} className={styles.nearbyItem}>
                           <span>{item.name}</span>
-                          {item.price > 0 && <span className={styles.nearbyPrice}>{item.price.toFixed(2).replace('.', ',')} €</span>}
+                          {item.price && item.price > 0 && <span className={styles.nearbyPrice}>{item.price.toFixed(2).replace('.', ',')} €</span>}
                         </div>
                       ))}
-                      {allItems.length > 6 && <p className={styles.nearbyMore}>+{allItems.length - 6} weitere</p>}
+                      {displayItems.length > 8 && <p className={styles.nearbyMore}>+{displayItems.length - 8} weitere</p>}
                     </div>
                   )}
                 </div>

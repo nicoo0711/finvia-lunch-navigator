@@ -21,6 +21,7 @@ export type Restaurant = {
   emoji: string
   color: string
   logo?: string
+  staticItems?: { name: string; price?: number }[]
 }
 
 export type RestaurantMenu = {
@@ -76,6 +77,17 @@ export const RESTAURANTS: Restaurant[] = [
     emoji: '🇪🇹',
     color: '#E8F5E9',
     logo: 'https://www.google.com/s2/favicons?domain=edensgarden-restaurant.com&sz=64',
+    staticItems: [
+      { name: 'Gemüsevariation Teller', price: 12.90 },
+      { name: 'Nech Tibs Bowl', price: 14.90 },
+      { name: 'Beef Tibs Bowl', price: 14.90 },
+      { name: 'Reis Veggie Tibs', price: 12.90 },
+      { name: 'Greek Salad', price: 10.90 },
+      { name: 'Caesar Salad', price: 12.90 },
+      { name: 'Classic Chicken Wrap', price: 11.90 },
+      { name: 'Tibs Wrap', price: 12.90 },
+      { name: 'Veggie Wrap', price: 10.90 },
+    ],
   },
   {
     id: 'fresh74',
