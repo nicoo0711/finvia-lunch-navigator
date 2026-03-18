@@ -92,35 +92,33 @@ export async function scrapeSandwicher(): Promise<RestaurantMenu> {
     await page.goto('https://www.sandwicher.de', { waitUntil: 'domcontentloaded', timeout: 20000 })
     await new Promise(r => setTimeout(r, 3000))
 
-    // Get ALL text content including hidden slides
-    const fullText = await page.evaluate(() => document.body.textContent || '')
+    // Click each day and extract menu
+    for (let i = 0; i < WEEKDAY_LABELS.length; i++) {
+      const label = WEEKDAY_LABELS[i]
+      const expectedDate = getDateForWeekdayIndex(i)
 
-    // Find all date occurrences and extract items between them
-    const dateRegex = /(\d{1,2})\.\s*([a-zA-ZäöüÄÖÜ]+)\s*(\d{4})/g
-    const months: Record<string, string> = {
-      januar: '01', februar: '02', märz: '03', april: '04',
-      mai: '05', juni: '06', juli: '07', august: '08',
-      september: '09', oktober: '10', november: '11', dezember: '12',
-    }
-    const datePositions: { date: string; pos: number }[] = []
-    let m: RegExpExecArray | null
-    while ((m = dateRegex.exec(fullText)) !== null) {
-      const month = months[m[2].toLowerCase()]
-      if (!month) continue
-      const iso = `${m[3]}-${month}-${m[1].padStart(2, '0')}`
-      // Only keep dates from current week, skip duplicates
-      if (!datePositions.find(d => d.date === iso)) {
-        datePositions.push({ date: iso, pos: m.index })
+      const navEl = await page.$(`[aria-label="${label}"]`)
+      if (!navEl) continue
+
+      // Try up to 3 times to load the correct slide
+      let items: MenuItem[] = []
+      for (let attempt = 0; attempt < 3; attempt++) {
+        await navEl.click()
+        await new Promise(r => setTimeout(r, 3000))
+
+        const text = await page.evaluate(() => {
+          const all = (document.body as HTMLElement).innerText || document.body.textContent || ''
+          const idx = all.indexOf("gibt's heute")
+          return idx >= 0 ? all.slice(idx, idx + 2000) : all.slice(0, 3000)
+        })
+
+        if (text.includes(label)) {
+          items = parseItems(text)
+          break
+        }
       }
-    }
 
-    // Extract items between consecutive date positions
-    for (let i = 0; i < datePositions.length; i++) {
-      const { date, pos } = datePositions[i]
-      const end = datePositions[i + 1]?.pos ?? pos + 1500
-      const section = fullText.slice(pos, Math.min(end, pos + 1500))
-      const items = parseItems(section)
-      if (items.length > 0) days.push({ date, items })
+      if (items.length > 0) days.push({ date: expectedDate, items })
     }
 
   } finally {
