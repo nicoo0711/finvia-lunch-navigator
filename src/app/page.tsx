@@ -88,7 +88,9 @@ export default function Home() {
               >
                 <div className={styles.cardHeader}>
                   <div className={styles.iconWrap} style={{ background: restaurant.color }}>
-                    <span>{restaurant.emoji}</span>
+                    {restaurant.logo
+                      ? <img src={restaurant.logo} alt={restaurant.name} width={32} height={32} style={{ borderRadius: 4 }} />
+                      : <span>{restaurant.emoji}</span>}
                   </div>
                   <div>
                     <h2 className={styles.restaurantName}>{restaurant.name}</h2>

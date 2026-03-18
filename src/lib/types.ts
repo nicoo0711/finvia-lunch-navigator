@@ -18,6 +18,7 @@ export type Restaurant = {
   scrapeType: 'auto' | 'manual'
   emoji: string
   color: string
+  logo?: string
 }
 
 export type RestaurantMenu = {
@@ -38,6 +39,7 @@ export const RESTAURANTS: Restaurant[] = [
     scrapeType: 'auto',
     emoji: '🥩',
     color: '#FAECE7',
+    logo: 'https://www.google.com/s2/favicons?domain=metzgerei-illing.de&sz=64',
   },
   {
     id: 'sandwicher',
@@ -48,6 +50,7 @@ export const RESTAURANTS: Restaurant[] = [
     scrapeType: 'auto',
     emoji: '🥪',
     color: '#E1F5EE',
+    logo: 'https://www.google.com/s2/favicons?domain=sandwicher.de&sz=64',
   },
   {
     id: 'fresh74',
@@ -58,5 +61,6 @@ export const RESTAURANTS: Restaurant[] = [
     scrapeType: 'manual',
     emoji: '🥗',
     color: '#E6F1FB',
+    logo: 'https://www.google.com/s2/favicons?domain=fresh74.de&sz=64',
   },
 ]
