@@ -69,10 +69,8 @@ export async function scrapeFresh74(): Promise<RestaurantMenu> {
     const key = dayKey.toLowerCase()
     const mappedItems = items.map(i => ({ name: i.name, price: i.price, tags: parseTags(i.name) }))
     if (key === 'allgemein') {
-      // No day breakdown — store for all weekdays
-      for (let i = 0; i < 5; i++) {
-        days.push({ date: getDateForWeekday(i), items: mappedItems })
-      }
+      // No day breakdown — store once (weekly view shows all days anyway)
+      days.push({ date: getDateForWeekday(0), items: mappedItems })
     } else {
       const dayIndex = DAY_LABELS[key]
       if (dayIndex === undefined) continue
