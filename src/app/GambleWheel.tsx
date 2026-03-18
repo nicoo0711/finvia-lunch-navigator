@@ -1,32 +1,51 @@
 'use client'
 
-import { useRef, useState, useEffect, useCallback } from 'react'
+import { useRef, useState, useEffect } from 'react'
 import { Restaurant } from '@/lib/types'
 import styles from './GambleWheel.module.css'
 
 export function GambleWheel({ restaurants }: { restaurants: Restaurant[] }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const rotationRef = useRef(0)
+  const imagesRef = useRef<(HTMLImageElement | null)[]>([])
   const [spinning, setSpinning] = useState(false)
   const [winner, setWinner] = useState<Restaurant | null>(null)
+  const [imagesLoaded, setImagesLoaded] = useState(false)
 
   const n = restaurants.length
   const sliceAngle = (2 * Math.PI) / n
+  const SIZE = 480
 
-  const drawWheel = useCallback((rot: number) => {
+  // Preload all logos
+  useEffect(() => {
+    let loaded = 0
+    const imgs = restaurants.map((rest, i) => {
+      if (!rest.logo) { loaded++; if (loaded === n) setImagesLoaded(true); return null }
+      const img = new Image()
+      img.crossOrigin = 'anonymous'
+      img.onload = () => { loaded++; if (loaded === n) setImagesLoaded(true) }
+      img.onerror = () => { loaded++; if (loaded === n) setImagesLoaded(true) }
+      img.src = rest.logo
+      return img
+    })
+    imagesRef.current = imgs
+  }, [restaurants, n])
+
+  function drawWheel(rot: number) {
     const canvas = canvasRef.current
     if (!canvas) return
     const ctx = canvas.getContext('2d')!
-    const cx = canvas.width / 2
-    const cy = canvas.height / 2
-    const r = cx - 6
+    const cx = SIZE / 2
+    const cy = SIZE / 2
+    const r = cx - 8
 
-    ctx.clearRect(0, 0, canvas.width, canvas.height)
+    ctx.clearRect(0, 0, SIZE, SIZE)
 
     restaurants.forEach((rest, i) => {
       const startAngle = rot + i * sliceAngle - Math.PI / 2
       const endAngle = startAngle + sliceAngle
 
+      // Slice
       ctx.beginPath()
       ctx.moveTo(cx, cy)
       ctx.arc(cx, cy, r, startAngle, endAngle)
@@ -34,38 +53,59 @@ export function GambleWheel({ restaurants }: { restaurants: Restaurant[] }) {
       ctx.fillStyle = rest.color || '#f0f0f0'
       ctx.fill()
       ctx.strokeStyle = '#ffffff'
-      ctx.lineWidth = 2
+      ctx.lineWidth = 2.5
       ctx.stroke()
 
-      // Emoji in each slice
+      // Logo image in slice
       const midAngle = startAngle + sliceAngle / 2
-      const labelR = r * 0.65
-      const lx = cx + labelR * Math.cos(midAngle)
-      const ly = cy + labelR * Math.sin(midAngle)
+      const logoR = r * 0.62
+      const lx = cx + logoR * Math.cos(midAngle)
+      const ly = cy + logoR * Math.sin(midAngle)
+      const imgSize = Math.max(22, Math.min(40, Math.floor(260 / n)))
+      const img = imagesRef.current[i]
 
       ctx.save()
       ctx.translate(lx, ly)
       ctx.rotate(midAngle + Math.PI / 2)
-      ctx.font = `${Math.max(10, Math.min(20, Math.floor(180 / n)))}px serif`
-      ctx.textAlign = 'center'
-      ctx.textBaseline = 'middle'
-      ctx.fillText(rest.emoji, 0, 0)
+
+      if (img && img.complete && img.naturalWidth > 0) {
+        // Clip to a rounded rect for the logo
+        const half = imgSize / 2
+        ctx.beginPath()
+        ctx.roundRect(-half, -half, imgSize, imgSize, 4)
+        ctx.clip()
+        ctx.drawImage(img, -half, -half, imgSize, imgSize)
+      } else {
+        // Fallback: emoji
+        ctx.font = `${Math.max(12, Math.min(22, Math.floor(200 / n)))}px serif`
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.fillStyle = '#333'
+        ctx.fillText(rest.emoji, 0, 0)
+      }
       ctx.restore()
     })
 
+    // Outer ring
+    ctx.beginPath()
+    ctx.arc(cx, cy, r, 0, 2 * Math.PI)
+    ctx.strokeStyle = 'rgba(0,0,0,0.1)'
+    ctx.lineWidth = 4
+    ctx.stroke()
+
     // Center circle
     ctx.beginPath()
-    ctx.arc(cx, cy, 18, 0, 2 * Math.PI)
+    ctx.arc(cx, cy, 20, 0, 2 * Math.PI)
     ctx.fillStyle = '#ffffff'
     ctx.fill()
     ctx.strokeStyle = '#ddd'
     ctx.lineWidth = 2
     ctx.stroke()
-  }, [restaurants, sliceAngle, n])
+  }
 
   useEffect(() => {
-    drawWheel(rotationRef.current)
-  }, [drawWheel])
+    if (imagesLoaded) drawWheel(rotationRef.current)
+  }, [imagesLoaded])
 
   function spin() {
     if (spinning) return
@@ -73,10 +113,10 @@ export function GambleWheel({ restaurants }: { restaurants: Restaurant[] }) {
     setWinner(null)
 
     const startRot = rotationRef.current
-    const extraSpins = (5 + Math.random() * 5) * 2 * Math.PI
+    const extraSpins = (6 + Math.random() * 5) * 2 * Math.PI
     const randomAngle = Math.random() * 2 * Math.PI
     const endRot = startRot + extraSpins + randomAngle
-    const duration = 4000
+    const duration = 4500
     const startTime = Date.now()
 
     const animate = () => {
@@ -108,7 +148,7 @@ export function GambleWheel({ restaurants }: { restaurants: Restaurant[] }) {
 
       <div className={styles.wheelWrap}>
         <div className={styles.pointer}>▼</div>
-        <canvas ref={canvasRef} width={320} height={320} className={styles.canvas} />
+        <canvas ref={canvasRef} width={SIZE} height={SIZE} className={styles.canvas} />
       </div>
 
       <button className={styles.spinBtn} onClick={spin} disabled={spinning}>
