@@ -65,6 +65,11 @@ export const RESTAURANTS: Restaurant[] = [
     emoji: '🥩',
     color: '#FFF3E0',
     logo: 'https://www.google.com/s2/favicons?domain=block-house.de&sz=64',
+    staticItems: [
+      { name: 'Block Burger mit Pilz-Zwiebel-Gemüse', price: 14.90 },
+      { name: 'Großer Salat mit Rindfleischstreifen', price: 14.90 },
+      { name: 'Tagesgericht (wechselt täglich Mo–Fr)' },
+    ],
   },
   {
     id: 'edensgarden',
