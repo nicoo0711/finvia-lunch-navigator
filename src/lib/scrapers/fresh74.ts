@@ -25,26 +25,31 @@ const DAY_LABELS: Record<string, number> = {
 
 export async function scrapeFresh74(): Promise<RestaurantMenu> {
   const chromium = (await import('@sparticuz/chromium-min')).default
-  const puppeteerExtra = (await import('puppeteer-extra')).default
-  const StealthPlugin = (await import('puppeteer-extra-plugin-stealth')).default
-  puppeteerExtra.use(StealthPlugin())
+  const puppeteer = (await import('puppeteer-core')).default
 
   const execPath = await chromium.executablePath(
     'https://github.com/Sparticuz/chromium/releases/download/v131.0.1/chromium-v131.0.1-pack.tar'
   )
 
-  const browser = await puppeteerExtra.launch({
-    args: chromium.args,
+  const browser = await puppeteer.launch({
+    args: [
+      ...chromium.args,
+      '--disable-blink-features=AutomationControlled',
+    ],
     defaultViewport: { width: 1280, height: 900 },
     executablePath: execPath,
     headless: true,
-  } as any)
+  })
 
   let imageBase64 = ''
   let imageMime = 'image/jpeg'
 
   try {
     const page = await browser.newPage()
+    await page.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36')
+    await page.evaluateOnNewDocument(() => {
+      Object.defineProperty(navigator, 'webdriver', { get: () => false })
+    })
     await page.goto('https://www.fresh74.de/menue/', { waitUntil: 'networkidle2', timeout: 25000 })
     await new Promise(r => setTimeout(r, 2000))
 
