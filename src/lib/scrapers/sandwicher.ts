@@ -62,13 +62,22 @@ export async function scrapeSandwicher(): Promise<RestaurantMenu> {
     await page.goto('https://www.sandwicher.de', { waitUntil: 'domcontentloaded', timeout: 20000 })
     await new Promise(r => setTimeout(r, 3000))
 
-    // Click on today's day navigation dot
+    // Click on today's day navigation dot and wait for content to update
     if (todayLabel) {
       const navSelector = `[aria-label="${todayLabel}"]`
       const navEl = await page.$(navSelector)
       if (navEl) {
         await navEl.click()
-        await new Promise(r => setTimeout(r, 2000))
+        // Wait until the slider content actually shows today's day name
+        await page.waitForFunction(
+          (label: string) => {
+            const text = (document.body as HTMLElement).innerText || ''
+            const idx = text.indexOf("gibt's heute")
+            return idx >= 0 && text.slice(idx, idx + 300).includes(label)
+          },
+          { timeout: 10000 },
+          todayLabel
+        ).catch(() => {})
       }
     }
 
