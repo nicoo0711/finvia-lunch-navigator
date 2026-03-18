@@ -207,7 +207,7 @@ export default function Home() {
 
           {/* Restaurant Cards */}
           <div className={styles.cards}>
-            {RESTAURANTS.filter(r => !['edensgarden', 'yumas', 'doori'].includes(r.id)).map((restaurant) => {
+            {RESTAURANTS.filter(r => !['edensgarden', 'yumas', 'doori', 'sushiammain', 'asiathai', 'bestworscht'].includes(r.id)).map((restaurant) => {
               const dayMenu = getMenuForDate(restaurant.id, restaurant.menuType === 'weekly')
               const lastUpdated = getLastUpdated(restaurant.id)
               const filtered = dayMenu ? filterItems(dayMenu.items, filter) : []
