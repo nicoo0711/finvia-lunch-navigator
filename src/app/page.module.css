@@ -235,4 +235,7 @@
   color: var(--text-muted);
   transition: all 0.15s;
 }
-.refreshBtn:hover { background: var(--accent-light); color: var(--text); border-color: var(--accent); }
+.refreshBtn:hover:not(:disabled) { background: var(--accent-light); color: var(--text); border-color: var(--accent); }
+.refreshBtn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.refreshedAt { font-size: 13px; color: var(--green); margin-top: 8px; }

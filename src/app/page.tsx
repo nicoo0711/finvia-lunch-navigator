@@ -47,6 +47,8 @@ export default function Home() {
   const [menus, setMenus] = useState<RestaurantMenu[]>([])
   const [filter, setFilter] = useState<Filter>('alle')
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
+  const [refreshedAt, setRefreshedAt] = useState<string | null>(null)
   const [selectedDay, setSelectedDay] = useState(getTodayIndex)
   const weekDates = getWeekDates()
   const selectedDate = weekDates[selectedDay]
@@ -200,14 +202,26 @@ export default function Home() {
 
         {/* Refresh button */}
         <div className={styles.refreshRow}>
-          <button className={styles.refreshBtn} onClick={() => {
-            setLoading(true)
-            fetch('/api/scrape?secret=finvia-cron-2026').finally(() => {
-              fetch('/api/menu').then((r) => r.json()).then((d) => { setMenus(d); setLoading(false) })
-            })
-          }}>
-            Menüs neu laden
+          <button
+            className={styles.refreshBtn}
+            disabled={refreshing}
+            onClick={() => {
+              setRefreshing(true)
+              setRefreshedAt(null)
+              fetch('/api/scrape?secret=finvia-cron-2026').finally(() => {
+                fetch('/api/menu').then((r) => r.json()).then((d) => {
+                  setMenus(d)
+                  setRefreshing(false)
+                  setRefreshedAt(new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }))
+                })
+              })
+            }}
+          >
+            {refreshing ? '⏳ Wird aktualisiert…' : 'Menüs neu laden'}
           </button>
+          {refreshedAt && (
+            <p className={styles.refreshedAt}>✓ Aktualisiert um {refreshedAt} Uhr</p>
+          )}
         </div>
       </div>
     </main>
