@@ -30,9 +30,44 @@
   line-height: 1;
 }
 
-.canvas {
-  display: block;
+.wheel {
   border-radius: 50%;
+  position: relative;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.divider {
+  position: absolute;
+  width: 2px;
+  height: 50%;
+  background: rgba(255,255,255,0.7);
+  left: 50%;
+  top: 0;
+  transform-origin: 50% 100%;
+}
+
+.logoWrap {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 4px;
+}
+
+.centerDot {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  background: #fff;
+  border: 2px solid #ddd;
+  border-radius: 50%;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 2;
+  pointer-events: none;
 }
 
 .spinBtn {
