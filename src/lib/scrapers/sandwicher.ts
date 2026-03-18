@@ -92,35 +92,17 @@ export async function scrapeSandwicher(): Promise<RestaurantMenu> {
     await page.goto('https://www.sandwicher.de', { waitUntil: 'domcontentloaded', timeout: 20000 })
     await new Promise(r => setTimeout(r, 3000))
 
-    // Scrape all 5 weekdays
+    // Get ALL text content including hidden slides (Wix renders all in DOM)
+    const fullText = await page.evaluate(() => document.body.textContent || '')
+
+    // Split into sections by day label
     for (let i = 0; i < WEEKDAY_LABELS.length; i++) {
       const label = WEEKDAY_LABELS[i]
-      const navEl = await page.$(`[aria-label="${label}"]`)
-      if (!navEl) continue
-
-      await navEl.click()
-      await new Promise(r => setTimeout(r, 500))
-      await page.waitForFunction(
-        (lbl: string) => {
-          const text = (document.body as HTMLElement).innerText || ''
-          const idx = text.indexOf("gibt's heute")
-          return idx >= 0 && text.slice(idx, idx + 400).includes(lbl)
-        },
-        { timeout: 12000 },
-        label
-      ).catch(() => {})
-
-      const text = await page.evaluate(() => {
-        const all = (document.body as HTMLElement).innerText || document.body.textContent || ''
-        const idx = all.indexOf("gibt's heute")
-        return idx >= 0 ? all.slice(idx, idx + 2000) : ''
-      })
-
-      if (!text) continue
-      // Verify text actually shows the right day before parsing
-      if (!text.includes(label)) continue
+      const idx = fullText.indexOf(label)
+      if (idx === -1) continue
+      const section = fullText.slice(idx, idx + 1500)
       const date = getDateForWeekdayIndex(i)
-      const items = parseItems(text)
+      const items = parseItems(section)
       if (items.length > 0) days.push({ date, items })
     }
 
