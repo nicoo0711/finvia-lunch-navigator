@@ -7,10 +7,17 @@ export async function GET() {
     headers: { 'Accept': 'application/json' },
   })
   const data = await jinaRes.json()
+  const content: string = data?.data?.content || ''
+  // Extract all markdown image URLs
+  const imgRegex = /!\[.*?\]\((https?:\/\/[^)]+)\)/g
+  const imgUrls: string[] = []
+  let m: RegExpExecArray | null
+  while ((m = imgRegex.exec(content)) !== null) imgUrls.push(m[1])
+
   return NextResponse.json({
     keys: Object.keys(data?.data || {}),
-    images: data?.data?.images,
-    content_preview: (data?.data?.content || '').slice(0, 1000),
-    html_preview: (data?.data?.html || '').slice(0, 1000),
+    external: data?.data?.external,
+    img_urls_from_markdown: imgUrls,
+    content_preview: content.slice(0, 2000),
   })
 }
