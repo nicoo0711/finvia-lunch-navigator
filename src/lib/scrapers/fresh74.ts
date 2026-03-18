@@ -24,50 +24,21 @@ const DAY_LABELS: Record<string, number> = {
 }
 
 export async function scrapeFresh74(): Promise<RestaurantMenu> {
-  // Use Jina.ai reader to bypass Cloudflare and get the page HTML
+  // Jina.ai takes a screenshot of the page, bypassing Cloudflare
   const jinaRes = await fetch('https://r.jina.ai/https://www.fresh74.de/menue/', {
-    headers: {
-      'Accept': 'application/json',
-      'X-Return-Format': 'html',
-    },
+    headers: { 'X-Return-Format': 'screenshot' },
   })
-  const html = await jinaRes.text()
 
-  // Extract all image URLs from the HTML
-  const imgRegex = /src="(https?:\/\/[^"]+\.(jpg|jpeg|png|webp)[^"]*)"/gi
-  const imgUrls: string[] = []
-  let m: RegExpExecArray | null
-  while ((m = imgRegex.exec(html)) !== null) {
-    const url = m[1]
-    if (!url.includes('logo') && !url.includes('icon') && !url.includes('avatar')) {
-      imgUrls.push(url)
-    }
-  }
+  if (!jinaRes.ok) throw new Error(`Jina screenshot fehlgeschlagen: ${jinaRes.status}`)
 
-  if (imgUrls.length === 0) throw new Error('Kein Bild auf der fresh74 Seite gefunden')
+  const buffer = await jinaRes.arrayBuffer()
+  if (buffer.byteLength < 10000) throw new Error('Screenshot zu klein – Seite nicht geladen')
 
-  // Try each image until we find one that looks like a menu (large enough)
-  let imageBase64 = ''
-  let imageMime = 'image/jpeg'
+  const imageBase64 = Buffer.from(buffer).toString('base64')
+  const contentType = jinaRes.headers.get('content-type') || 'image/png'
+  const imageMime = contentType.split(';')[0]
 
-  for (const url of imgUrls) {
-    try {
-      const imgRes = await fetch(url)
-      if (!imgRes.ok) continue
-      const contentType = imgRes.headers.get('content-type') || 'image/jpeg'
-      const buffer = await imgRes.arrayBuffer()
-      if (buffer.byteLength < 50000) continue // skip small images
-      imageBase64 = Buffer.from(buffer).toString('base64')
-      imageMime = contentType.split(';')[0]
-      break
-    } catch {
-      continue
-    }
-  }
-
-  if (!imageBase64) throw new Error('Kein Menübild geladen (alle Bilder zu klein oder nicht erreichbar)')
-
-  // Use Claude Vision to read the menu
+  // Use Claude Vision to read the menu from the screenshot
   const client = new Anthropic()
   const response = await client.messages.create({
     model: 'claude-haiku-4-5-20251001',
@@ -81,7 +52,7 @@ export async function scrapeFresh74(): Promise<RestaurantMenu> {
         },
         {
           type: 'text',
-          text: 'Das ist die Wochenspeisekarte eines Restaurants. Extrahiere alle Gerichte mit Preis pro Wochentag. Antworte NUR im JSON-Format: {"montag": [{"name": "...", "price": 9.50}], "dienstag": [...], ...}. Wenn kein Preis erkennbar, setze 0. Wenn kein Tag erkennbar, nutze "allgemein".',
+          text: 'Das ist ein Screenshot der Wochenspeisekarte eines Restaurants. Extrahiere alle Gerichte mit Preis pro Wochentag. Antworte NUR im JSON-Format: {"montag": [{"name": "...", "price": 9.50}], "dienstag": [...], ...}. Wenn kein Preis erkennbar, setze 0. Wenn kein Tag erkennbar, nutze "allgemein".',
         },
       ],
     }],
