@@ -106,7 +106,12 @@ export async function scrapeSandwicher(): Promise<RestaurantMenu> {
       return (document.body as HTMLElement).innerText || document.body.textContent || ''
     })
 
-    // Locate each day's section by its German date string and parse items from it
+    // The date appears at the END of each day's slide (not the start).
+    // Strategy: find all date positions, then for each day take the text
+    // between the previous date and the current date — those are the items.
+    type DateEntry = { idx: number; expectedDate: string; germanDate: string }
+    const dateEntries: DateEntry[] = []
+
     for (let i = 0; i < WEEKDAY_LABELS.length; i++) {
       const expectedDate = getDateForWeekdayIndex(i)
       const d = new Date(expectedDate + 'T12:00:00')
@@ -116,11 +121,21 @@ export async function scrapeSandwicher(): Promise<RestaurantMenu> {
         month: 'long',
         year: 'numeric',
       })
-
       const idx = fullText.indexOf(germanDate)
-      if (idx < 0) continue
+      dateEntries.push({ idx, expectedDate, germanDate })
+    }
 
-      const section = fullText.slice(idx, idx + 1500)
+    for (let i = 0; i < dateEntries.length; i++) {
+      const { idx: endIdx, expectedDate, germanDate } = dateEntries[i]
+      if (endIdx < 0) continue
+
+      // Start boundary: position right after the previous date (or 1200 chars back)
+      const prevPositions = dateEntries.slice(0, i).map(e => e.idx).filter(p => p >= 0)
+      const startIdx = prevPositions.length > 0 ? Math.max(...prevPositions) : Math.max(0, endIdx - 1200)
+
+      // Section: [prev_date?] ... [items] ... [this_date]
+      // parseItems skips first date, collects items, stops at second date
+      const section = fullText.slice(startIdx, endIdx + germanDate.length)
       const items = parseItems(section)
       if (items.length > 0) days.push({ date: expectedDate, items })
     }
