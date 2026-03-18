@@ -93,22 +93,28 @@ export async function scrapeSandwicher(): Promise<RestaurantMenu> {
     if (!date) return { restaurantId: 'sandwicher', lastUpdated: new Date().toISOString(), days: [] }
 
     const items: MenuItem[] = []
-    // Join multi-line dish names (price comes after the name, sometimes on next line)
-    const cleaned = text.replace(/\n​\n/g, '\n').replace(/\u200B/g, '')
+    const cleaned = text.replace(/\u200B/g, '')
     const lines = cleaned.split('\n').map(l => l.trim()).filter(l => l.length > 3)
 
+    const datePattern = /\d{1,2}\.\s*[a-zA-ZäöüÄÖÜ]+\s*\d{4}/
+    let foundFirstDate = false
     let currentName = ''
-    lines.forEach((line) => {
+    for (const line of lines) {
+      if (datePattern.test(line)) {
+        if (foundFirstDate) break // stop at second date = next day's content
+        foundFirstDate = true
+        continue
+      }
       const price = parsePrice(line)
       if (price > 0) {
         const nameFromLine = line.replace(/([\d]+[.,][\d]+)\s*€/, '').trim()
         const fullName = (currentName + ' ' + nameFromLine).trim()
         if (fullName.length > 3) items.push({ name: fullName, price, tags: parseTags(fullName) })
         currentName = ''
-      } else if (!line.match(/\d{1,2}\.\s*\w+\s*\d{4}/) && line.length > 3) {
+      } else {
         currentName = line
       }
-    })
+    }
 
     const days: DayMenu[] = items.length > 0 ? [{ date, items }] : []
     return { restaurantId: 'sandwicher', lastUpdated: new Date().toISOString(), days }
