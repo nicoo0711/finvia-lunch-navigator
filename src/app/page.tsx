@@ -34,9 +34,14 @@ export default function Home() {
       .catch(() => setLoading(false))
   }, [])
 
-  function getMenuForToday(restaurantId: string): DayMenu | null {
+  function getMenuForToday(restaurantId: string, weekly?: boolean): DayMenu | null {
     const menu = menus.find((m) => m.restaurantId === restaurantId)
     if (!menu) return null
+    if (weekly) {
+      const allItems = menu.days.flatMap((d) => d.items)
+      if (allItems.length === 0) return null
+      return { date: today, items: allItems }
+    }
     return menu.days.find((d) => d.date === today) || null
   }
 
@@ -79,7 +84,7 @@ export default function Home() {
         {/* Restaurant Cards */}
         <div className={styles.cards}>
           {RESTAURANTS.map((restaurant) => {
-            const dayMenu = getMenuForToday(restaurant.id)
+            const dayMenu = getMenuForToday(restaurant.id, restaurant.menuType === 'weekly')
             const lastUpdated = getLastUpdated(restaurant.id)
             const filtered = dayMenu ? filterItems(dayMenu.items, filter) : []
             const hasItems = filtered.length > 0

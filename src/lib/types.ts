@@ -16,6 +16,7 @@ export type Restaurant = {
   hours: string
   url: string
   scrapeType: 'auto' | 'manual'
+  menuType?: 'daily' | 'weekly'
   emoji: string
   color: string
   logo?: string
@@ -59,6 +60,7 @@ export const RESTAURANTS: Restaurant[] = [
     hours: 'Mo–Fr 12:00–14:30 Uhr',
     url: 'https://www.fresh74.de/menue/',
     scrapeType: 'auto',
+    menuType: 'weekly',
     emoji: '🥗',
     color: '#E6F1FB',
     logo: 'https://www.google.com/s2/favicons?domain=fresh74.de&sz=64',
