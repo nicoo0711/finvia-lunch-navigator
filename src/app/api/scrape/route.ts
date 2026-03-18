@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { scrapeIlling } from '@/lib/scrapers/illing'
 import { scrapeSandwicher } from '@/lib/scrapers/sandwicher'
 import { scrapeFresh74 } from '@/lib/scrapers/fresh74'
+import { scrapeBlockHouse } from '@/lib/scrapers/blockhouse'
 import { saveMenu } from '@/lib/store'
 
 export const maxDuration = 60
@@ -14,6 +15,14 @@ export async function GET(req: NextRequest) {
   }
 
   const results: Record<string, string> = {}
+
+  try {
+    const blockhouseMenu = await scrapeBlockHouse()
+    await saveMenu(blockhouseMenu)
+    results.blockhouse = `OK – ${blockhouseMenu.days.length} Tage gescrapt`
+  } catch (e) {
+    results.blockhouse = `Fehler: ${String(e)}`
+  }
 
   try {
     const illingMenu = await scrapeIlling()

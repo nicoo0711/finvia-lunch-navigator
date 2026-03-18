@@ -54,6 +54,17 @@ export const RESTAURANTS: Restaurant[] = [
     logo: 'https://www.google.com/s2/favicons?domain=sandwicher.de&sz=64',
   },
   {
+    id: 'blockhouse',
+    name: 'Block House',
+    address: 'Bockenheimer Anlage 38',
+    hours: 'Mo–Fr 12:00–15:00 Uhr',
+    url: 'https://www.block-house.de/speisekarte/lunch-time/',
+    scrapeType: 'auto',
+    emoji: '🥩',
+    color: '#FFF3E0',
+    logo: 'https://www.google.com/s2/favicons?domain=block-house.de&sz=64',
+  },
+  {
     id: 'fresh74',
     name: 'fresh74',
     address: 'Oberlindau 74',
