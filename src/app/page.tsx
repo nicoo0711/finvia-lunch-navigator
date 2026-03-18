@@ -87,7 +87,6 @@ export default function Home() {
               <p className={styles.subtitle}>FINVIA · {formatDate(selectedDate)}</p>
             </div>
           </div>
-          <a href="/admin" className={styles.adminLink}>Admin</a>
         </div>
       </header>
 
