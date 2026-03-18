@@ -24,52 +24,20 @@ const DAY_LABELS: Record<string, number> = {
 }
 
 export async function scrapeFresh74(): Promise<RestaurantMenu> {
-  const chromium = (await import('@sparticuz/chromium-min')).default
-  const puppeteer = (await import('puppeteer-core')).default
-
-  const execPath = await chromium.executablePath(
-    'https://github.com/Sparticuz/chromium/releases/download/v131.0.1/chromium-v131.0.1-pack.tar'
-  )
-
-  const browser = await puppeteer.launch({
-    args: chromium.args,
-    defaultViewport: { width: 1280, height: 900 },
-    executablePath: execPath,
-    headless: true,
+  // Use Jina.ai to bypass Cloudflare and get the og:image URL
+  const jinaRes = await fetch('https://r.jina.ai/https://www.fresh74.de/menue/', {
+    headers: { 'Accept': 'application/json', 'X-No-Cache': 'true' },
   })
+  const jinaData = await jinaRes.json()
+  const imgUrl = jinaData?.data?.metadata?.['og:image']
+  if (!imgUrl) throw new Error('Kein Menübild gefunden auf fresh74')
 
-  let imageBase64 = ''
-  let imageMime = 'image/jpeg'
-
-  try {
-    const page = await browser.newPage()
-    await page.goto('https://www.fresh74.de/menue/', { waitUntil: 'domcontentloaded', timeout: 20000 })
-    await new Promise(r => setTimeout(r, 3000))
-
-    // Find the menu image URL
-    const imgUrl = await page.evaluate(() => {
-      const imgs = Array.from(document.querySelectorAll('img'))
-      // Find the largest image (likely the menu)
-      const menuImg = imgs
-        .filter(img => img.src && img.naturalWidth > 200)
-        .sort((a, b) => (b.naturalWidth * b.naturalHeight) - (a.naturalWidth * a.naturalHeight))[0]
-      return menuImg?.src || ''
-    })
-
-    if (imgUrl) {
-      const imgRes = await page.goto(imgUrl)
-      if (imgRes) {
-        const buffer = await imgRes.buffer()
-        imageBase64 = buffer.toString('base64')
-        const ct = imgRes.headers()['content-type'] || 'image/jpeg'
-        imageMime = ct.split(';')[0] as typeof imageMime
-      }
-    }
-  } finally {
-    await browser.close()
-  }
-
-  if (!imageBase64) throw new Error('Kein Bild gefunden auf fresh74')
+  // Download the image
+  const imgRes = await fetch(imgUrl)
+  if (!imgRes.ok) throw new Error(`Bild konnte nicht geladen werden: ${imgRes.status}`)
+  const buffer = await imgRes.arrayBuffer()
+  const imageBase64 = Buffer.from(buffer).toString('base64')
+  const imageMime = (imgRes.headers.get('content-type') || 'image/jpeg').split(';')[0]
 
   // Use Claude Vision to read the menu
   const client = new Anthropic()
