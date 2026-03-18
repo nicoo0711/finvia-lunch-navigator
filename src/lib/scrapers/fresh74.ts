@@ -61,7 +61,7 @@ export async function scrapeFresh74(): Promise<RestaurantMenu> {
 
   const raw = response.content[0].type === 'text' ? response.content[0].text : ''
   const jsonMatch = raw.match(/\{[\s\S]*\}/)
-  if (!jsonMatch) throw new Error(`Claude Response: ${raw.slice(0, 200)}`)
+  if (!jsonMatch) throw new Error(`Claude sieht: ${raw.slice(0, 300)}`)
 
   const parsed = JSON.parse(jsonMatch[0]) as Record<string, { name: string; price: number }[]>
   const days: DayMenu[] = []
@@ -75,5 +75,6 @@ export async function scrapeFresh74(): Promise<RestaurantMenu> {
     })
   }
 
+  if (days.length === 0) throw new Error(`Claude JSON: ${jsonMatch[0].slice(0, 300)}`)
   return { restaurantId: 'fresh74', lastUpdated: new Date().toISOString(), days }
 }
