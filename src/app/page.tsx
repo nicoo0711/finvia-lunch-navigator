@@ -49,9 +49,12 @@ export default function Home() {
     <main className={styles.main}>
       <header className={styles.header}>
         <div className={styles.headerInner}>
-          <div>
-            <h1 className={styles.title}>Lunch Navigator</h1>
-            <p className={styles.subtitle}>FINVIA · {formatDate(today)}</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <img src="https://www.google.com/s2/favicons?domain=finvia.fo&sz=64" alt="FINVIA" width={32} height={32} style={{ borderRadius: 6 }} />
+            <div>
+              <h1 className={styles.title}>Lunch Navigator</h1>
+              <p className={styles.subtitle}>FINVIA · {formatDate(today)}</p>
+            </div>
           </div>
           <a href="/admin" className={styles.adminLink}>Admin</a>
         </div>
