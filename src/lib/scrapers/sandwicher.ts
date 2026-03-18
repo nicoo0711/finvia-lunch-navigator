@@ -28,27 +28,41 @@ function parseDate(text: string): string | null {
   return `${match[3]}-${month}-${match[1].padStart(2, '0')}`
 }
 
-const DAY_LABELS: Record<number, string> = {
-  1: 'Montag',
-  2: 'Dienstag',
-  3: 'Mittwoch',
-  4: 'Donnerstag',
-  5: 'Freitag',
+function parseItems(text: string): MenuItem[] {
+  const items: MenuItem[] = []
+  const cleaned = text.replace(/\u200B/g, '')
+  const lines = cleaned.split('\n').map(l => l.trim()).filter(l => l.length > 3)
+  const datePattern = /\d{1,2}\.\s*[a-zA-ZäöüÄÖÜ]+\s*\d{4}/
+  let foundFirstDate = false
+  let currentName = ''
+  for (const line of lines) {
+    if (datePattern.test(line)) {
+      if (foundFirstDate) break
+      foundFirstDate = true
+      continue
+    }
+    const price = parsePrice(line)
+    if (price > 0) {
+      const nameFromLine = line.replace(/([\d]+[.,][\d]+)\s*€/, '').trim()
+      const fullName = (currentName + ' ' + nameFromLine).trim()
+      if (fullName.length > 3) items.push({ name: fullName, price, tags: parseTags(fullName) })
+      currentName = ''
+    } else if (!line.includes('heute') && !line.includes('Ob für') && line.length < 80) {
+      currentName = line
+    }
+  }
+  return items
 }
+
+const WEEKDAY_LABELS = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag']
 
 export async function scrapeSandwicher(): Promise<RestaurantMenu> {
   const chromium = (await import('@sparticuz/chromium-min')).default
   const puppeteer = (await import('puppeteer-core')).default
 
-  const todayDow = new Date().toLocaleDateString('en-US', { timeZone: 'Europe/Berlin', weekday: 'long' })
-  const dowMap: Record<string, number> = { Monday: 1, Tuesday: 2, Wednesday: 3, Thursday: 4, Friday: 5 }
-  const todayIndex = dowMap[todayDow]
-  const todayLabel = DAY_LABELS[todayIndex]
-
   const execPath = await chromium.executablePath(
     'https://github.com/Sparticuz/chromium/releases/download/v131.0.1/chromium-v131.0.1-pack.tar'
   )
-  if (!execPath) throw new Error('Chromium executable not found')
 
   const browser = await puppeteer.launch({
     args: chromium.args,
@@ -57,69 +71,45 @@ export async function scrapeSandwicher(): Promise<RestaurantMenu> {
     headless: true,
   })
 
+  const days: DayMenu[] = []
+
   try {
     const page = await browser.newPage()
     await page.goto('https://www.sandwicher.de', { waitUntil: 'domcontentloaded', timeout: 20000 })
     await new Promise(r => setTimeout(r, 3000))
 
-    // Click on today's day navigation dot and wait for content to update
-    if (todayLabel) {
-      const navSelector = `[aria-label="${todayLabel}"]`
-      const navEl = await page.$(navSelector)
-      if (navEl) {
-        await navEl.click()
-        // Wait until the slider content actually shows today's day name
-        await page.waitForFunction(
-          (label: string) => {
-            const text = (document.body as HTMLElement).innerText || ''
-            const idx = text.indexOf("gibt's heute")
-            return idx >= 0 && text.slice(idx, idx + 300).includes(label)
-          },
-          { timeout: 10000 },
-          todayLabel
-        ).catch(() => {})
-      }
+    // Scrape all 5 weekdays
+    for (const label of WEEKDAY_LABELS) {
+      const navEl = await page.$(`[aria-label="${label}"]`)
+      if (!navEl) continue
+
+      await navEl.click()
+      await page.waitForFunction(
+        (lbl: string) => {
+          const text = (document.body as HTMLElement).innerText || ''
+          const idx = text.indexOf("gibt's heute")
+          return idx >= 0 && text.slice(idx, idx + 300).includes(lbl)
+        },
+        { timeout: 8000 },
+        label
+      ).catch(() => {})
+
+      const text = await page.evaluate(() => {
+        const all = (document.body as HTMLElement).innerText || document.body.textContent || ''
+        const idx = all.indexOf("gibt's heute")
+        return idx >= 0 ? all.slice(idx, idx + 2000) : ''
+      })
+
+      if (!text) continue
+      const date = parseDate(text)
+      if (!date) continue
+      const items = parseItems(text)
+      if (items.length > 0) days.push({ date, items })
     }
-
-    // Extract text from the "Was gibt's heute?" section
-    const text = await page.evaluate(() => {
-      // Try innerText first, then textContent
-      const all = document.body.innerText || document.body.textContent || ''
-      const idx = all.indexOf("gibt's heute")
-      return idx >= 0 ? all.slice(idx, idx + 2000) : all.slice(0, 2000)
-    })
-
-    // Always use today's Berlin date (don't rely on website text date)
-    const date = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Berlin' })
-
-    const items: MenuItem[] = []
-    const cleaned = text.replace(/\u200B/g, '')
-    const lines = cleaned.split('\n').map(l => l.trim()).filter(l => l.length > 3)
-
-    const datePattern = /\d{1,2}\.\s*[a-zA-ZäöüÄÖÜ]+\s*\d{4}/
-    let foundFirstDate = false
-    let currentName = ''
-    for (const line of lines) {
-      if (datePattern.test(line)) {
-        if (foundFirstDate) break // stop at second date = next day's content
-        foundFirstDate = true
-        continue
-      }
-      const price = parsePrice(line)
-      if (price > 0) {
-        const nameFromLine = line.replace(/([\d]+[.,][\d]+)\s*€/, '').trim()
-        const fullName = (currentName + ' ' + nameFromLine).trim()
-        if (fullName.length > 3) items.push({ name: fullName, price, tags: parseTags(fullName) })
-        currentName = ''
-      } else if (!line.includes("heute") && !line.includes("Ob für") && line.length < 80) {
-        currentName = line
-      }
-    }
-
-    const days: DayMenu[] = items.length > 0 ? [{ date, items }] : []
-    return { restaurantId: 'sandwicher', lastUpdated: new Date().toISOString(), days }
 
   } finally {
     await browser.close()
   }
+
+  return { restaurantId: 'sandwicher', lastUpdated: new Date().toISOString(), days }
 }
