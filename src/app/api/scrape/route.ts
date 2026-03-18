@@ -3,7 +3,7 @@ import { scrapeIlling } from '@/lib/scrapers/illing'
 import { scrapeSandwicher } from '@/lib/scrapers/sandwicher'
 import { scrapeFresh74 } from '@/lib/scrapers/fresh74'
 import { scrapeBlockHouse } from '@/lib/scrapers/blockhouse'
-import { saveMenu } from '@/lib/store'
+import { saveMenu, mergeMenu } from '@/lib/store'
 
 export const maxDuration = 60
 
@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
 
   try {
     const sandwicherMenu = await scrapeSandwicher()
-    await saveMenu(sandwicherMenu)
+    await mergeMenu(sandwicherMenu)
     results.sandwicher = `OK – ${sandwicherMenu.days.length} Tage gescrapt`
   } catch (e) {
     results.sandwicher = `Fehler: ${String(e)}`
