@@ -1,17 +1,39 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { RESTAURANTS, Restaurant, RestaurantMenu, DayMenu, MenuItem } from '@/lib/types'
+import { RESTAURANTS, RestaurantMenu, DayMenu, MenuItem } from '@/lib/types'
 import styles from './page.module.css'
 
 type Filter = 'alle' | 'vegan' | 'vegetarisch' | 'glutenfrei' | 'unter10'
 
-function getTodayISO() {
-  return new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Berlin' })
+const WEEKDAYS = [
+  { label: 'Mo', full: 'Montag' },
+  { label: 'Di', full: 'Dienstag' },
+  { label: 'Mi', full: 'Mittwoch' },
+  { label: 'Do', full: 'Donnerstag' },
+  { label: 'Fr', full: 'Freitag' },
+]
+
+function getWeekDates(): string[] {
+  const now = new Date()
+  const day = now.getDay()
+  const monday = new Date(now)
+  monday.setDate(now.getDate() - (day === 0 ? 6 : day - 1))
+  return Array.from({ length: 5 }, (_, i) => {
+    const d = new Date(monday)
+    d.setDate(monday.getDate() + i)
+    return d.toLocaleDateString('sv-SE', { timeZone: 'Europe/Berlin' })
+  })
+}
+
+function getTodayIndex(): number {
+  const day = new Date().toLocaleDateString('en-US', { timeZone: 'Europe/Berlin', weekday: 'long' })
+  const map: Record<string, number> = { Monday: 0, Tuesday: 1, Wednesday: 2, Thursday: 3, Friday: 4 }
+  return map[day] ?? 0
 }
 
 function formatDate(iso: string) {
-  const d = new Date(iso)
+  const d = new Date(iso + 'T12:00:00')
   return d.toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
 }
 
@@ -25,7 +47,9 @@ export default function Home() {
   const [menus, setMenus] = useState<RestaurantMenu[]>([])
   const [filter, setFilter] = useState<Filter>('alle')
   const [loading, setLoading] = useState(true)
-  const today = getTodayISO()
+  const [selectedDay, setSelectedDay] = useState(getTodayIndex)
+  const weekDates = getWeekDates()
+  const selectedDate = weekDates[selectedDay]
 
   useEffect(() => {
     fetch('/api/menu')
@@ -34,15 +58,15 @@ export default function Home() {
       .catch(() => setLoading(false))
   }, [])
 
-  function getMenuForToday(restaurantId: string, weekly?: boolean): DayMenu | null {
+  function getMenuForDate(restaurantId: string, weekly?: boolean): DayMenu | null {
     const menu = menus.find((m) => m.restaurantId === restaurantId)
     if (!menu) return null
     if (weekly) {
       const allItems = menu.days.flatMap((d) => d.items)
       if (allItems.length === 0) return null
-      return { date: today, items: allItems }
+      return { date: selectedDate, items: allItems }
     }
-    return menu.days.find((d) => d.date === today) || null
+    return menu.days.find((d) => d.date === selectedDate) || null
   }
 
   function getLastUpdated(restaurantId: string): string | null {
@@ -58,7 +82,7 @@ export default function Home() {
             <img src="https://www.google.com/s2/favicons?domain=finvia.fo&sz=64" alt="FINVIA" width={32} height={32} style={{ borderRadius: 6 }} />
             <div>
               <h1 className={styles.title}>Lunch Navigator</h1>
-              <p className={styles.subtitle}>FINVIA · {formatDate(today)}</p>
+              <p className={styles.subtitle}>FINVIA · {formatDate(selectedDate)}</p>
             </div>
           </div>
           <a href="/admin" className={styles.adminLink}>Admin</a>
@@ -66,17 +90,35 @@ export default function Home() {
       </header>
 
       <div className={styles.container}>
-        {/* Filter Bar */}
-        <div className={styles.filters}>
-          {(['alle', 'vegan', 'vegetarisch', 'glutenfrei', 'unter10'] as Filter[]).map((f) => (
+
+        {/* Day Tabs */}
+        <div className={styles.dayTabs}>
+          {WEEKDAYS.map((wd, i) => (
             <button
-              key={f}
-              className={`${styles.filterBtn} ${filter === f ? styles.active : ''}`}
-              onClick={() => setFilter(f)}
+              key={i}
+              className={`${styles.dayTab} ${selectedDay === i ? styles.dayTabActive : ''}`}
+              onClick={() => setSelectedDay(i)}
             >
-              {f === 'unter10' ? 'Unter 10 €' : f.charAt(0).toUpperCase() + f.slice(1)}
+              <span className={styles.dayTabShort}>{wd.label}</span>
+              <span className={styles.dayTabFull}>{wd.full}</span>
             </button>
           ))}
+        </div>
+
+        {/* Section heading + Filter Bar */}
+        <div className={styles.sectionHeader}>
+          <h2 className={styles.sectionTitle}>Tagesgerichte</h2>
+          <div className={styles.filters}>
+            {(['alle', 'vegan', 'vegetarisch', 'glutenfrei', 'unter10'] as Filter[]).map((f) => (
+              <button
+                key={f}
+                className={`${styles.filterBtn} ${filter === f ? styles.active : ''}`}
+                onClick={() => setFilter(f)}
+              >
+                {f === 'unter10' ? 'Unter 10 €' : f.charAt(0).toUpperCase() + f.slice(1)}
+              </button>
+            ))}
+          </div>
         </div>
 
         {loading && <p className={styles.loading}>Menüs werden geladen…</p>}
@@ -84,7 +126,7 @@ export default function Home() {
         {/* Restaurant Cards */}
         <div className={styles.cards}>
           {RESTAURANTS.map((restaurant) => {
-            const dayMenu = getMenuForToday(restaurant.id, restaurant.menuType === 'weekly')
+            const dayMenu = getMenuForDate(restaurant.id, restaurant.menuType === 'weekly')
             const lastUpdated = getLastUpdated(restaurant.id)
             const filtered = dayMenu ? filterItems(dayMenu.items, filter) : []
             const hasItems = filtered.length > 0
@@ -97,7 +139,7 @@ export default function Home() {
                 <div className={styles.cardHeader}>
                   <div className={styles.iconWrap} style={{ background: restaurant.color }}>
                     {restaurant.logo
-                      ? <img src={restaurant.logo} alt={restaurant.name} width={32} height={32} style={{ borderRadius: 4 }} />
+                      ? <img src={restaurant.logo} alt={restaurant.name} width={32} height={32} style={{ borderRadius: 4, objectFit: 'contain' }} />
                       : <span>{restaurant.emoji}</span>}
                   </div>
                   <div>
@@ -115,7 +157,7 @@ export default function Home() {
                       ? 'Keine Gerichte für diesen Filter.'
                       : restaurant.scrapeType === 'manual'
                       ? 'Noch nicht eingetragen – bitte im Admin-Bereich ergänzen.'
-                      : 'Kein Menü für heute verfügbar.'}
+                      : 'Kein Menü verfügbar.'}
                   </div>
                 ) : (
                   <div className={styles.menuList}>

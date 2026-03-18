@@ -48,11 +48,62 @@
   padding: 2rem 1.5rem;
 }
 
+.dayTabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 1.5rem;
+  border-bottom: 2px solid var(--border);
+  padding-bottom: 0;
+}
+
+.dayTab {
+  font-size: 14px;
+  font-weight: 500;
+  padding: 8px 20px;
+  border-radius: 8px 8px 0 0;
+  border: 1px solid transparent;
+  border-bottom: none;
+  background: transparent;
+  color: var(--text-muted);
+  margin-bottom: -2px;
+  transition: all 0.15s;
+}
+.dayTab:hover { color: var(--text); background: var(--accent-light); }
+.dayTabActive {
+  background: var(--surface);
+  color: var(--accent);
+  border-color: var(--border);
+  border-bottom-color: var(--surface);
+}
+
+.dayTabShort { display: none; }
+.dayTabFull { display: inline; }
+
+@media (max-width: 480px) {
+  .dayTabShort { display: inline; }
+  .dayTabFull { display: none; }
+  .dayTab { padding: 8px 14px; }
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.25rem;
+}
+
+.sectionTitle {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+}
+
 .filters {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
-  margin-bottom: 1.5rem;
 }
 
 .filterBtn {
