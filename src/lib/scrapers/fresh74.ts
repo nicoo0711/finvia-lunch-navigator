@@ -66,12 +66,18 @@ export async function scrapeFresh74(): Promise<RestaurantMenu> {
   const days: DayMenu[] = []
 
   for (const [dayKey, items] of Object.entries(parsed)) {
-    const dayIndex = DAY_LABELS[dayKey.toLowerCase()]
-    if (dayIndex === undefined) continue
-    days.push({
-      date: getDateForWeekday(dayIndex),
-      items: items.map(i => ({ name: i.name, price: i.price, tags: parseTags(i.name) })),
-    })
+    const key = dayKey.toLowerCase()
+    const mappedItems = items.map(i => ({ name: i.name, price: i.price, tags: parseTags(i.name) }))
+    if (key === 'allgemein') {
+      // No day breakdown — store for all weekdays
+      for (let i = 0; i < 5; i++) {
+        days.push({ date: getDateForWeekday(i), items: mappedItems })
+      }
+    } else {
+      const dayIndex = DAY_LABELS[key]
+      if (dayIndex === undefined) continue
+      days.push({ date: getDateForWeekday(dayIndex), items: mappedItems })
+    }
   }
 
   if (days.length === 0) throw new Error(`Claude JSON: ${jsonMatch[0].slice(0, 300)}`)
