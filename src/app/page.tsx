@@ -202,7 +202,7 @@ export default function Home() {
         <div className={styles.refreshRow}>
           <button className={styles.refreshBtn} onClick={() => {
             setLoading(true)
-            fetch('/api/scrape').finally(() => {
+            fetch('/api/scrape?secret=finvia-cron-2026').finally(() => {
               fetch('/api/menu').then((r) => r.json()).then((d) => { setMenus(d); setLoading(false) })
             })
           }}>
