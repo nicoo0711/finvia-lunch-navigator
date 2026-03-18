@@ -206,7 +206,7 @@ export default function Home() {
 
           {/* Restaurant Cards */}
           <div className={styles.cards}>
-            {RESTAURANTS.map((restaurant) => {
+            {RESTAURANTS.filter(r => r.id !== 'edensgarden').map((restaurant) => {
               const dayMenu = getMenuForDate(restaurant.id, restaurant.menuType === 'weekly')
               const lastUpdated = getLastUpdated(restaurant.id)
               const filtered = dayMenu ? filterItems(dayMenu.items, filter) : []
