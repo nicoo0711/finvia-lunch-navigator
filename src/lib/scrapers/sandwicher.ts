@@ -99,13 +99,14 @@ export async function scrapeSandwicher(): Promise<RestaurantMenu> {
       if (!navEl) continue
 
       await navEl.click()
+      await new Promise(r => setTimeout(r, 500))
       await page.waitForFunction(
         (lbl: string) => {
           const text = (document.body as HTMLElement).innerText || ''
           const idx = text.indexOf("gibt's heute")
-          return idx >= 0 && text.slice(idx, idx + 300).includes(lbl)
+          return idx >= 0 && text.slice(idx, idx + 400).includes(lbl)
         },
-        { timeout: 8000 },
+        { timeout: 12000 },
         label
       ).catch(() => {})
 
@@ -116,8 +117,9 @@ export async function scrapeSandwicher(): Promise<RestaurantMenu> {
       })
 
       if (!text) continue
-      // Fallback to calculated date if parsing fails
-      const date = parseDate(text) || getDateForWeekdayIndex(i)
+      // Verify text actually shows the right day before parsing
+      if (!text.includes(label)) continue
+      const date = getDateForWeekdayIndex(i)
       const items = parseItems(text)
       if (items.length > 0) days.push({ date, items })
     }
