@@ -149,7 +149,9 @@ export default function Home() {
                     </div>
                     <a href={restaurant.url} target="_blank" rel="noreferrer" className={styles.siteLink}>Website →</a>
                   </div>
-                  {allItems.length > 0 && (
+                  {['sandwicher', 'illing', 'fresh74'].includes(restaurant.id) ? (
+                    <p className={styles.nearbyTageskarte} onClick={() => setActiveTab('tageskarte')}>→ Siehe Tageskarte</p>
+                  ) : allItems.length > 0 && (
                     <div className={styles.nearbyItems}>
                       {allItems.slice(0, 6).map((item, i) => (
                         <div key={i} className={styles.nearbyItem}>
