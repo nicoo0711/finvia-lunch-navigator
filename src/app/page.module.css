@@ -290,6 +290,12 @@
 .nearbyName { font-size: 15px; font-weight: 500; color: var(--text); }
 .nearbyMeta { font-size: 12px; color: var(--text-muted); margin-top: 1px; }
 
+.expandIcon {
+  font-size: 10px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
 .nearbyItems {
   margin-top: 0.75rem;
   padding-top: 0.75rem;

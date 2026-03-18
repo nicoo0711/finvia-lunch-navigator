@@ -51,6 +51,7 @@ export default function Home() {
   const [refreshedAt, setRefreshedAt] = useState<string | null>(null)
   const [selectedDay, setSelectedDay] = useState(getTodayIndex)
   const [activeTab, setActiveTab] = useState<'tageskarte' | 'restaurants'>('tageskarte')
+  const [expandedRestaurant, setExpandedRestaurant] = useState<string | null>(null)
   const weekDates = getWeekDates()
   const selectedDate = weekDates[selectedDay]
 
@@ -136,9 +137,14 @@ export default function Home() {
                 ? menu.days.flatMap((d) => d.items).filter((item, idx, arr) => arr.findIndex(x => x.name === item.name) === idx)
                 : []
               const displayItems = restaurant.staticItems ?? scrapedItems
+              const isExpanded = expandedRestaurant === restaurant.id
               return (
                 <div key={restaurant.id} className={styles.nearbyCard}>
-                  <div className={styles.nearbyCardHeader}>
+                  <div
+                    className={styles.nearbyCardHeader}
+                    onClick={() => setExpandedRestaurant(isExpanded ? null : restaurant.id)}
+                    style={{ cursor: 'pointer' }}
+                  >
                     <div className={styles.iconWrap} style={{ background: restaurant.color }}>
                       {restaurant.logo
                         ? <img src={restaurant.logo} alt={restaurant.name} width={28} height={28} style={{ borderRadius: 4, objectFit: 'contain' }} />
@@ -148,21 +154,28 @@ export default function Home() {
                       <h3 className={styles.nearbyName}>{restaurant.name}</h3>
                       <p className={styles.nearbyMeta}>{restaurant.address} · {restaurant.hours}</p>
                     </div>
-                    <a href={restaurant.url} target="_blank" rel="noreferrer" className={styles.siteLink}>Website →</a>
-                  </div>
-                  {['sandwicher', 'illing', 'fresh74'].includes(restaurant.id) ? (
-                    <p className={styles.nearbyTageskarte} onClick={() => setActiveTab('tageskarte')}>→ Siehe Tageskarte</p>
-                  ) : displayItems.length > 0 && (
-                    <div className={styles.nearbyItems}>
-                      {displayItems.map((item, i) => (
-                        <div key={i} className={styles.nearbyItem}>
-                          <span>{item.name}</span>
-                          <span className={styles.nearbyPrice}>
-                            {item.price && item.price > 0 ? `${item.price.toFixed(2).replace('.', ',')} €` : '–'}
-                          </span>
-                        </div>
-                      ))}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <a href={restaurant.url} target="_blank" rel="noreferrer" className={styles.siteLink} onClick={e => e.stopPropagation()}>Website →</a>
+                      <span className={styles.expandIcon}>{isExpanded ? '▲' : '▼'}</span>
                     </div>
+                  </div>
+                  {isExpanded && (
+                    ['sandwicher', 'illing', 'fresh74'].includes(restaurant.id) ? (
+                      <p className={styles.nearbyTageskarte} onClick={() => setActiveTab('tageskarte')}>→ Siehe Tageskarte</p>
+                    ) : displayItems.length > 0 ? (
+                      <div className={styles.nearbyItems}>
+                        {displayItems.map((item, i) => (
+                          <div key={i} className={styles.nearbyItem}>
+                            <span>{item.name}</span>
+                            <span className={styles.nearbyPrice}>
+                              {item.price && item.price > 0 ? `${item.price.toFixed(2).replace('.', ',')} €` : '–'}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className={styles.nearbyTageskarte} style={{ cursor: 'default' }}>Keine Menüdaten verfügbar.</p>
+                    )
                   )}
                 </div>
               )
