@@ -154,7 +154,7 @@ export default function Home() {
                     <p className={styles.nearbyTageskarte} onClick={() => setActiveTab('tageskarte')}>→ Siehe Tageskarte</p>
                   ) : displayItems.length > 0 && (
                     <div className={styles.nearbyItems}>
-                      {displayItems.slice(0, 8).map((item, i) => (
+                      {displayItems.map((item, i) => (
                         <div key={i} className={styles.nearbyItem}>
                           <span>{item.name}</span>
                           <span className={styles.nearbyPrice}>
@@ -162,7 +162,6 @@ export default function Home() {
                           </span>
                         </div>
                       ))}
-                      {displayItems.length > 8 && <p className={styles.nearbyMore}>+{displayItems.length - 8} weitere</p>}
                     </div>
                   )}
                 </div>
