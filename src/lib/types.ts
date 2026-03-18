@@ -58,7 +58,7 @@ export const RESTAURANTS: Restaurant[] = [
     address: 'Oberlindau 74',
     hours: 'Mo–Fr 12:00–14:30 Uhr',
     url: 'https://www.fresh74.de/menue/',
-    scrapeType: 'manual',
+    scrapeType: 'auto',
     emoji: '🥗',
     color: '#E6F1FB',
     logo: 'https://www.google.com/s2/favicons?domain=fresh74.de&sz=64',
