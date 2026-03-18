@@ -111,7 +111,7 @@ export async function scrapeSandwicher(): Promise<RestaurantMenu> {
         const fullName = (currentName + ' ' + nameFromLine).trim()
         if (fullName.length > 3) items.push({ name: fullName, price, tags: parseTags(fullName) })
         currentName = ''
-      } else {
+      } else if (!line.includes("heute") && !line.includes("Ob für") && line.length < 80) {
         currentName = line
       }
     }
