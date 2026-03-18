@@ -24,55 +24,48 @@ const DAY_LABELS: Record<string, number> = {
 }
 
 export async function scrapeFresh74(): Promise<RestaurantMenu> {
-  const chromium = (await import('@sparticuz/chromium-min')).default
-  const puppeteer = (await import('puppeteer-core')).default
-
-  const execPath = await chromium.executablePath(
-    'https://github.com/Sparticuz/chromium/releases/download/v131.0.1/chromium-v131.0.1-pack.tar'
-  )
-
-  const browser = await puppeteer.launch({
-    args: [
-      ...chromium.args,
-      '--disable-blink-features=AutomationControlled',
-    ],
-    defaultViewport: { width: 1280, height: 900 },
-    executablePath: execPath,
-    headless: true,
+  // Use Jina.ai reader to bypass Cloudflare and get the page HTML
+  const jinaRes = await fetch('https://r.jina.ai/https://www.fresh74.de/menue/', {
+    headers: {
+      'Accept': 'application/json',
+      'X-Return-Format': 'html',
+    },
   })
+  const html = await jinaRes.text()
 
+  // Extract all image URLs from the HTML
+  const imgRegex = /src="(https?:\/\/[^"]+\.(jpg|jpeg|png|webp)[^"]*)"/gi
+  const imgUrls: string[] = []
+  let m: RegExpExecArray | null
+  while ((m = imgRegex.exec(html)) !== null) {
+    const url = m[1]
+    if (!url.includes('logo') && !url.includes('icon') && !url.includes('avatar')) {
+      imgUrls.push(url)
+    }
+  }
+
+  if (imgUrls.length === 0) throw new Error('Kein Bild auf der fresh74 Seite gefunden')
+
+  // Try each image until we find one that looks like a menu (large enough)
   let imageBase64 = ''
   let imageMime = 'image/jpeg'
 
-  try {
-    const page = await browser.newPage()
-    await page.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36')
-    await page.evaluateOnNewDocument(() => {
-      Object.defineProperty(navigator, 'webdriver', { get: () => false })
-    })
-    await page.goto('https://www.fresh74.de/menue/', { waitUntil: 'networkidle2', timeout: 25000 })
-    await new Promise(r => setTimeout(r, 2000))
-
-    // Find the largest image on the page (the menu)
-    const imgUrl = await page.evaluate(() => {
-      const imgs = Array.from(document.querySelectorAll('img'))
-      const best = imgs
-        .filter(img => img.src && img.naturalWidth > 300)
-        .sort((a, b) => (b.naturalWidth * b.naturalHeight) - (a.naturalWidth * a.naturalHeight))[0]
-      return best?.src || ''
-    })
-
-    if (!imgUrl) throw new Error('Kein Bild gefunden (Cloudflare blockiert?)')
-
-    const imgRes = await fetch(imgUrl)
-    const buffer = await imgRes.arrayBuffer()
-    imageBase64 = Buffer.from(buffer).toString('base64')
-    imageMime = (imgRes.headers.get('content-type') || 'image/jpeg').split(';')[0]
-  } finally {
-    await browser.close()
+  for (const url of imgUrls) {
+    try {
+      const imgRes = await fetch(url)
+      if (!imgRes.ok) continue
+      const contentType = imgRes.headers.get('content-type') || 'image/jpeg'
+      const buffer = await imgRes.arrayBuffer()
+      if (buffer.byteLength < 50000) continue // skip small images
+      imageBase64 = Buffer.from(buffer).toString('base64')
+      imageMime = contentType.split(';')[0]
+      break
+    } catch {
+      continue
+    }
   }
 
-  if (!imageBase64) throw new Error('Bild konnte nicht geladen werden')
+  if (!imageBase64) throw new Error('Kein Menübild geladen (alle Bilder zu klein oder nicht erreichbar)')
 
   // Use Claude Vision to read the menu
   const client = new Anthropic()
