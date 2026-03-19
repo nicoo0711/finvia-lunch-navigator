@@ -15,44 +15,56 @@ function parseTags(name: string): MenuItem['tags'] {
   return tags
 }
 
+const MONTHS: Record<string, string> = {
+  januar: '01', februar: '02', märz: '03', april: '04',
+  mai: '05', juni: '06', juli: '07', august: '08',
+  september: '09', oktober: '10', november: '11', dezember: '12',
+}
+
 function parseDate(text: string): string | null {
-  // Format: "18. März 2026"
-  const months: Record<string, string> = {
-    januar: '01', februar: '02', märz: '03', april: '04',
-    mai: '05', juni: '06', juli: '07', august: '08',
-    september: '09', oktober: '10', november: '11', dezember: '12',
+  const m = text.match(/(\d{1,2})\.\s*([a-zA-ZäöüÄÖÜ]+)\s*(\d{4})/i)
+  if (m) {
+    const month = MONTHS[m[2].toLowerCase()]
+    if (month) return `${m[3]}-${month}-${m[1].padStart(2, '0')}`
   }
-  const nameMatch = text.match(/(\d{1,2})\.\s*([a-zA-ZäöüÄÖÜ]+)\s*(\d{4})/i)
-  if (nameMatch) {
-    const month = months[nameMatch[2].toLowerCase()]
-    if (month) return `${nameMatch[3]}-${month}-${nameMatch[1].padStart(2, '0')}`
-  }
-  // Format: "18.03.2026"
-  const numMatch = text.match(/(\d{1,2})\.(\d{2})\.(\d{4})/)
-  if (numMatch) return `${numMatch[3]}-${numMatch[2]}-${numMatch[1].padStart(2, '0')}`
   return null
 }
 
-function parseItems(text: string): MenuItem[] {
+// Noise lines from the Sandwicher website that are NOT menu items
+const NOISE_PATTERNS = [
+  /steckt zwischen/i,
+  /sandwicher/i,
+  /reuterweg/i,
+  /ob für/i,
+  /heute/i,
+  /\d{1,2}:\d{2}/,    // time strings like "9:00"
+  /mo[–-]fr/i,
+  /täglich/i,
+  /unsere/i,
+  /willkommen/i,
+]
+
+function parseItemsFromSlide(text: string): MenuItem[] {
   const items: MenuItem[] = []
   const cleaned = text.replace(/\u200B/g, '')
   const lines = cleaned.split('\n').map(l => l.trim()).filter(l => l.length > 3)
-  const datePattern = /\d{1,2}\.\s*[a-zA-ZäöüÄÖÜ]+\s*\d{4}/
-  let foundFirstDate = false
   let currentName = ''
+
   for (const line of lines) {
-    if (datePattern.test(line)) {
-      if (foundFirstDate) break
-      foundFirstDate = true
-      continue
-    }
+    // Stop when we hit the date marker
+    if (/\d{1,2}\.\s*[a-zA-ZäöüÄÖÜ]+\s*\d{4}/.test(line)) break
+
     const price = parsePrice(line)
-    if (price > 0) {
+    if (price > 0 && price > 3 && price < 30) {
       const nameFromLine = line.replace(/([\d]+[.,][\d]+)\s*€/, '').trim()
-      const fullName = (currentName + ' ' + nameFromLine).trim()
-      if (fullName.length > 3) items.push({ name: fullName, price, tags: parseTags(fullName) })
+      // Prefer the name on the price line if it's substantial
+      const name = nameFromLine.length > 5 ? nameFromLine : `${currentName} ${nameFromLine}`.trim()
+      if (name.length > 3) items.push({ name, price, tags: parseTags(name) })
       currentName = ''
-    } else if (!line.includes('heute') && !line.includes('Ob für') && line.length < 80) {
+    } else if (
+      line.length < 80 &&
+      !NOISE_PATTERNS.some(p => p.test(line))
+    ) {
       currentName = line
     }
   }
@@ -92,24 +104,43 @@ export async function scrapeSandwicher(): Promise<RestaurantMenu> {
     await page.goto('https://www.sandwicher.de', { waitUntil: 'domcontentloaded', timeout: 20000 })
     await new Promise(r => setTimeout(r, 3000))
 
-    // Click each tab and extract its visible text immediately.
-    // Wix hides inactive slides with display:none, so innerText only returns
-    // text from the currently visible slide — we must read one tab at a time.
     for (let i = 0; i < WEEKDAY_LABELS.length; i++) {
       const label = WEEKDAY_LABELS[i]
       const navEl = await page.$(`[aria-label="${label}"]`)
-      if (navEl) {
-        await navEl.click()
-        await new Promise(r => setTimeout(r, 1500))
-      }
+      if (!navEl) continue
 
-      const slideText = await page.evaluate(() => {
-        return (document.body as HTMLElement).innerText || ''
+      await navEl.click()
+      await new Promise(r => setTimeout(r, 1800))
+
+      // Extract text from the active slide only.
+      // Wix uses aria-hidden="true/false" on slide panels — only the active
+      // panel has aria-hidden="false". Fall back to full body text if not found.
+      const { slideText, foundDate } = await page.evaluate(() => {
+        // Find the active panel by aria-hidden="false"
+        const allWithAriaHidden = Array.from(document.querySelectorAll('[aria-hidden]'))
+        const activePanel = allWithAriaHidden.find(
+          el => el.getAttribute('aria-hidden') === 'false' &&
+                (el as HTMLElement).innerText?.length > 50
+        )
+
+        const text = activePanel
+          ? (activePanel as HTMLElement).innerText
+          : (document.body as HTMLElement).innerText
+
+        // Find the German date in the slide text
+        const m = text.match(/\d{1,2}\.\s*(?:Januar|Februar|März|April|Mai|Juni|Juli|August|September|Oktober|November|Dezember)\s*\d{4}/i)
+        return { slideText: text, foundDate: m ? m[0] : null }
       })
 
-      const expectedDate = getDateForWeekdayIndex(i)
-      const items = parseItems(slideText)
-      if (items.length > 0) days.push({ date: expectedDate, items })
+      // Use the date found IN the slide to map items — don't trust tab order
+      const isoDate = foundDate ? parseDate(foundDate) : getDateForWeekdayIndex(i)
+      if (!isoDate) continue
+
+      // Skip duplicates (can happen if multiple tabs show same slide)
+      if (days.some(d => d.date === isoDate)) continue
+
+      const items = parseItemsFromSlide(slideText)
+      if (items.length > 0) days.push({ date: isoDate, items })
     }
 
   } finally {

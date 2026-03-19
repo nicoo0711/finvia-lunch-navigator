@@ -55,11 +55,29 @@ export function GambleWheel({ restaurants }: { restaurants: Restaurant[] }) {
     requestAnimationFrame(animate)
   }
 
-  const imgSize = Math.max(24, Math.min(44, Math.floor(280 / n)))
+  const imgSize = Math.max(36, Math.min(56, Math.floor(400 / n)))
 
   return (
     <div className={styles.container}>
       <p className={styles.subtitle}>Das Rad entscheidet, wohin es heute geht.</p>
+
+      {winner && (
+        <div className={styles.winnerCard}>
+          <p className={styles.winnerLabel}>Heute geht's zu:</p>
+          <div className={styles.winnerHeader}>
+            {winner.logo
+              ? <img src={winner.logo} alt={winner.name} width={44} height={44} style={{ borderRadius: 8, objectFit: 'contain', background: winner.color }} />
+              : <span style={{ fontSize: 28 }}>{winner.emoji}</span>}
+            <div>
+              <div className={styles.winnerName}>{winner.name}</div>
+              <div className={styles.winnerMeta}>{winner.address} · {winner.hours}</div>
+            </div>
+          </div>
+          <a href={winner.url} target="_blank" rel="noreferrer" className={styles.winnerLink}>
+            Zur Website →
+          </a>
+        </div>
+      )}
 
       <div className={styles.wheelWrap}>
         <div className={styles.pointer}>▼</div>
@@ -104,24 +122,6 @@ export function GambleWheel({ restaurants }: { restaurants: Restaurant[] }) {
       <button className={styles.spinBtn} onClick={spin} disabled={spinning}>
         {spinning ? 'Dreht…' : '🎰 Drehen!'}
       </button>
-
-      {winner && (
-        <div className={styles.winnerCard}>
-          <p className={styles.winnerLabel}>Heute geht's zu:</p>
-          <div className={styles.winnerHeader}>
-            {winner.logo
-              ? <img src={winner.logo} alt={winner.name} width={44} height={44} style={{ borderRadius: 8, objectFit: 'contain', background: winner.color }} />
-              : <span style={{ fontSize: 28 }}>{winner.emoji}</span>}
-            <div>
-              <div className={styles.winnerName}>{winner.name}</div>
-              <div className={styles.winnerMeta}>{winner.address} · {winner.hours}</div>
-            </div>
-          </div>
-          <a href={winner.url} target="_blank" rel="noreferrer" className={styles.winnerLink}>
-            Zur Website →
-          </a>
-        </div>
-      )}
     </div>
   )
 }
