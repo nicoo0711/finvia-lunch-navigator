@@ -48,8 +48,7 @@ export default function Home() {
   const [menus, setMenus] = useState<RestaurantMenu[]>([])
   const [filter, setFilter] = useState<Filter>('alle')
   const [loading, setLoading] = useState(true)
-  const [refreshing, setRefreshing] = useState(false)
-  const [refreshedAt, setRefreshedAt] = useState<string | null>(null)
+
   const [selectedDay, setSelectedDay] = useState(getTodayIndex)
   const [activeTab, setActiveTab] = useState<'tageskarte' | 'restaurants' | 'gamble'>('tageskarte')
   const [expandedRestaurant, setExpandedRestaurant] = useState<string | null>(null)
@@ -90,23 +89,6 @@ export default function Home() {
               <p className={styles.subtitle}>FINVIA · {formatDate(selectedDate)}</p>
             </div>
           </div>
-          <button
-            className={styles.headerRefreshBtn}
-            disabled={refreshing}
-            onClick={() => {
-              setRefreshing(true)
-              setRefreshedAt(null)
-              fetch('/api/scrape?secret=finvia-cron-2026').finally(() => {
-                fetch('/api/menu').then((r) => r.json()).then((d) => {
-                  setMenus(d)
-                  setRefreshing(false)
-                  setRefreshedAt(new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }))
-                })
-              })
-            }}
-          >
-            {refreshing ? '⏳' : '↻ Neu laden'}
-          </button>
         </div>
       </header>
 
@@ -301,9 +283,6 @@ export default function Home() {
             })}
           </div>
 
-          {refreshedAt && (
-            <p className={styles.refreshedAt}>✓ Aktualisiert um {refreshedAt} Uhr</p>
-          )}
         </section>)}
       </div>
     </main>

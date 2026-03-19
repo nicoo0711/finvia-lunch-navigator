@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find c:/finvia-lunch-navigator -name *finvia* -o -name *logo*)",
+      "Bash(find c:/finvia-lunch-navigator -name *.png -o -name *.svg -o -name *.ico -o -name *.jpg)"
+    ]
+  }
+}

@@ -88,42 +88,26 @@ export async function scrapeSandwicher(): Promise<RestaurantMenu> {
   })
 
   const days: DayMenu[] = []
-  let tabTexts: string[] = []
+  let fullText = ''
 
   try {
     const page = await browser.newPage()
-    await page.goto('https://www.sandwicher.de', { waitUntil: 'domcontentloaded', timeout: 20000 })
-    await new Promise(r => setTimeout(r, 3000))
+    await page.goto('https://www.sandwicher.de', { waitUntil: 'networkidle2', timeout: 30000 })
+    await new Promise(r => setTimeout(r, 4000))
 
-    // Click each tab and collect body.innerText per tab.
-    // Works for both display:none (only current slide visible) and
-    // visibility:hidden (all slides in innerText) Wix rendering modes.
-    tabTexts = []
-    for (const label of WEEKDAY_LABELS) {
-      const navEl = await page.$(`[aria-label="${label}"]`)
-      if (navEl) {
-        await navEl.click()
-        await new Promise(r => setTimeout(r, 1800))
-      }
-      const text = await page.evaluate(() => (document.body as HTMLElement).innerText || '')
-      tabTexts.push(text)
-    }
+    fullText = await page.evaluate(() => (document.body as HTMLElement).innerText || '')
 
-    // For each day, extract items between the previous day's date and this day's date.
-    // - display:none: only current slide text is present → prevDate not found → startIdx=0
-    // - visibility:hidden: all slides present → prevDate found → exact section extracted
+    // Parse each day's section from the full page text.
+    // Wix renders all slides in the DOM (visibility:hidden), so all dates appear in innerText.
     for (let i = 0; i < WEEKDAY_LABELS.length; i++) {
-      const text = tabTexts[i]
       const isoDate = getDateForWeekdayIndex(i)
       const germanDate = toGermanDate(isoDate)
 
-      const dateIdx = text.indexOf(germanDate)
+      const dateIdx = fullText.indexOf(germanDate)
       if (dateIdx < 0) continue
 
-      // Menu items appear AFTER the date header
-      const afterDate = text.slice(dateIdx + germanDate.length)
+      const afterDate = fullText.slice(dateIdx + germanDate.length)
 
-      // Stop at next date pattern (handles visibility:hidden where all days appear)
       const nextDateMatch = afterDate.search(
         /\d{1,2}\. (?:Januar|Februar|März|April|Mai|Juni|Juli|August|September|Oktober|November|Dezember) \d{4}/
       )
@@ -143,13 +127,12 @@ export async function scrapeSandwicher(): Promise<RestaurantMenu> {
     days,
     // @ts-ignore debug info
     _debug: {
-      tabTextLengths: tabTexts.map(t => t.length),
-      firstTabSample: tabTexts[0]?.slice(0, 300) ?? '',
+      fullTextLength: fullText.length,
+      fullTextSample: fullText.slice(0, 500),
       expectedDates: Array.from({ length: 5 }, (_, i) => toGermanDate(getDateForWeekdayIndex(i))),
       dateFoundAt: Array.from({ length: 5 }, (_, i) => {
-        const t = tabTexts[i] ?? ''
         const gd = toGermanDate(getDateForWeekdayIndex(i))
-        return { date: gd, idx: t.indexOf(gd) }
+        return { date: gd, idx: fullText.indexOf(gd) }
       }),
     },
   }

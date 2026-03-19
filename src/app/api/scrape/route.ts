@@ -43,7 +43,7 @@ export async function GET(req: NextRequest) {
 
   try {
     const sandwicherMenu = await scrapeSandwicher()
-    await saveMenu(sandwicherMenu)
+    if (sandwicherMenu.days.length > 0) await mergeMenu(sandwicherMenu)
     // @ts-ignore
     results.sandwicher = `OK – ${sandwicherMenu.days.length} Tage gescrapt | debug: ${JSON.stringify((sandwicherMenu as any)._debug)}`
   } catch (e) {
