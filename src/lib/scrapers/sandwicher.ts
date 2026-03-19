@@ -21,6 +21,15 @@ const MONTHS: Record<string, string> = {
   september: '09', oktober: '10', november: '11', dezember: '12',
 }
 
+function parseDate(text: string): string | null {
+  const m = text.match(/(\d{1,2})\.\s*([a-zA-ZäöüÄÖÜ]+)\s*(\d{4})/i)
+  if (m) {
+    const month = MONTHS[m[2].toLowerCase()]
+    if (month) return `${m[3]}-${month}-${m[1].padStart(2, '0')}`
+  }
+  return null
+}
+
 const NOISE_PATTERNS = [
   /steckt zwischen/i,
   /sandwicher/i,
@@ -30,27 +39,31 @@ const NOISE_PATTERNS = [
   /\d{1,2}:\d{2}/,
   /mo[–-]fr/i,
   /täglich/i,
+  /unsere/i,
   /willkommen/i,
 ]
 
-// Parse items from a text section that ends just before a date marker.
-// parseSection stops at the first date-like string it encounters.
-function parseSection(text: string): MenuItem[] {
+function parseItemsFromSlide(text: string): MenuItem[] {
   const items: MenuItem[] = []
-  const lines = text.replace(/\u200B/g, '').split('\n').map(l => l.trim()).filter(l => l.length > 3)
+  const cleaned = text.replace(/\u200B/g, '')
+  const lines = cleaned.split('\n').map(l => l.trim()).filter(l => l.length > 3)
   let currentName = ''
 
   for (const line of lines) {
     if (/\d{1,2}\.\s*[a-zA-ZäöüÄÖÜ]+\s*\d{4}/.test(line)) break
 
     const price = parsePrice(line)
-    if (price > 3 && price < 30) {
+    if (price > 0 && price > 3 && price < 30) {
       const rawName = line.replace(/([\d]+[.,][\d]+)\s*€/, '').trim()
+      // Strip tagline that may appear on the same line as a price
       const nameFromLine = rawName.replace(/steckt zwischen zwei scheiben\s*/gi, '').trim()
       const name = nameFromLine.length > 5 ? nameFromLine : `${currentName} ${nameFromLine}`.trim()
       if (name.length > 3) items.push({ name, price, tags: parseTags(name) })
       currentName = ''
-    } else if (line.length < 80 && !NOISE_PATTERNS.some(p => p.test(line))) {
+    } else if (
+      line.length < 80 &&
+      !NOISE_PATTERNS.some(p => p.test(line))
+    ) {
       currentName = line
     }
   }
@@ -66,16 +79,6 @@ function getDateForWeekdayIndex(i: number): string {
   monday.setDate(now.getDate() - (day === 0 ? 6 : day - 1))
   monday.setDate(monday.getDate() + i)
   return monday.toLocaleDateString('sv-SE', { timeZone: 'Europe/Berlin' })
-}
-
-function toGermanDate(isoDate: string): string {
-  const d = new Date(isoDate + 'T12:00:00')
-  return d.toLocaleDateString('de-DE', {
-    timeZone: 'Europe/Berlin',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  })
 }
 
 export async function scrapeSandwicher(): Promise<RestaurantMenu> {
@@ -106,34 +109,29 @@ export async function scrapeSandwicher(): Promise<RestaurantMenu> {
       if (!navEl) continue
 
       await navEl.click()
-      await new Promise(r => setTimeout(r, 1500))
+      await new Promise(r => setTimeout(r, 1800))
 
-      const fullText: string = await page.evaluate(
-        () => (document.body as HTMLElement).innerText || ''
-      )
+      const { slideText, foundDate } = await page.evaluate(() => {
+        const allWithAriaHidden = Array.from(document.querySelectorAll('[aria-hidden]'))
+        const activePanel = allWithAriaHidden.find(
+          el => el.getAttribute('aria-hidden') === 'false' &&
+                (el as HTMLElement).innerText?.length > 50
+        )
 
-      const isoDate = getDateForWeekdayIndex(i)
-      const germanDate = toGermanDate(isoDate)
+        const text = activePanel
+          ? (activePanel as HTMLElement).innerText
+          : (document.body as HTMLElement).innerText
 
-      const dateIdx = fullText.indexOf(germanDate)
-      if (dateIdx < 0) continue
+        const m = text.match(/\d{1,2}\.\s*(?:Januar|Februar|März|April|Mai|Juni|Juli|August|September|Oktober|November|Dezember)\s*\d{4}/i)
+        return { slideText: text, foundDate: m ? m[0] : null }
+      })
 
-      // Determine start boundary:
-      // If the body contains ALL slides (visibility:hidden), the previous day's date
-      // is also present — start from after it to avoid including earlier days.
-      // If only the active slide is visible (display:none), the previous date won't
-      // be found, so we start from 0.
-      let startIdx = 0
-      if (i > 0) {
-        const prevGermanDate = toGermanDate(getDateForWeekdayIndex(i - 1))
-        const prevIdx = fullText.indexOf(prevGermanDate)
-        if (prevIdx >= 0 && prevIdx < dateIdx) {
-          startIdx = prevIdx + prevGermanDate.length
-        }
-      }
+      const isoDate = foundDate ? parseDate(foundDate) : getDateForWeekdayIndex(i)
+      if (!isoDate) continue
 
-      const section = fullText.slice(startIdx, dateIdx)
-      const items = parseSection(section)
+      if (days.some(d => d.date === isoDate)) continue
+
+      const items = parseItemsFromSlide(slideText)
       if (items.length > 0) days.push({ date: isoDate, items })
     }
 
