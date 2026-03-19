@@ -88,6 +88,7 @@ export async function scrapeSandwicher(): Promise<RestaurantMenu> {
   })
 
   const days: DayMenu[] = []
+  let tabTexts: string[] = []
 
   try {
     const page = await browser.newPage()
@@ -97,7 +98,7 @@ export async function scrapeSandwicher(): Promise<RestaurantMenu> {
     // Click each tab and collect body.innerText per tab.
     // Works for both display:none (only current slide visible) and
     // visibility:hidden (all slides in innerText) Wix rendering modes.
-    const tabTexts: string[] = []
+    tabTexts = []
     for (const label of WEEKDAY_LABELS) {
       const navEl = await page.$(`[aria-label="${label}"]`)
       if (navEl) {
@@ -137,5 +138,20 @@ export async function scrapeSandwicher(): Promise<RestaurantMenu> {
     await browser.close()
   }
 
-  return { restaurantId: 'sandwicher', lastUpdated: new Date().toISOString(), days }
+  return {
+    restaurantId: 'sandwicher',
+    lastUpdated: new Date().toISOString(),
+    days,
+    // @ts-ignore debug info
+    _debug: {
+      tabTextLengths: tabTexts.map(t => t.length),
+      firstTabSample: tabTexts[0]?.slice(0, 300) ?? '',
+      expectedDates: Array.from({ length: 5 }, (_, i) => toGermanDate(getDateForWeekdayIndex(i))),
+      dateFoundAt: Array.from({ length: 5 }, (_, i) => {
+        const t = tabTexts[i] ?? ''
+        const gd = toGermanDate(getDateForWeekdayIndex(i))
+        return { date: gd, idx: t.indexOf(gd) }
+      }),
+    },
+  }
 }

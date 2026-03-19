@@ -44,7 +44,8 @@ export async function GET(req: NextRequest) {
   try {
     const sandwicherMenu = await scrapeSandwicher()
     await saveMenu(sandwicherMenu)
-    results.sandwicher = `OK – ${sandwicherMenu.days.length} Tage gescrapt`
+    // @ts-ignore
+    results.sandwicher = `OK – ${sandwicherMenu.days.length} Tage gescrapt | debug: ${JSON.stringify((sandwicherMenu as any)._debug)}`
   } catch (e) {
     results.sandwicher = `Fehler: ${String(e)}`
   }
