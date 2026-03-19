@@ -30,13 +30,14 @@ function parseDate(text: string): string | null {
   return null
 }
 
+// Noise lines from the Sandwicher website that are NOT menu items
 const NOISE_PATTERNS = [
   /steckt zwischen/i,
   /sandwicher/i,
   /reuterweg/i,
   /ob für/i,
   /heute/i,
-  /\d{1,2}:\d{2}/,
+  /\d{1,2}:\d{2}/,    // time strings like "9:00"
   /mo[–-]fr/i,
   /täglich/i,
   /unsere/i,
@@ -50,13 +51,13 @@ function parseItemsFromSlide(text: string): MenuItem[] {
   let currentName = ''
 
   for (const line of lines) {
+    // Stop when we hit the date marker
     if (/\d{1,2}\.\s*[a-zA-ZäöüÄÖÜ]+\s*\d{4}/.test(line)) break
 
     const price = parsePrice(line)
     if (price > 0 && price > 3 && price < 30) {
-      const rawName = line.replace(/([\d]+[.,][\d]+)\s*€/, '').trim()
-      // Strip tagline that may appear on the same line as a price
-      const nameFromLine = rawName.replace(/steckt zwischen zwei scheiben\s*/gi, '').trim()
+      const nameFromLine = line.replace(/([\d]+[.,][\d]+)\s*€/, '').trim()
+      // Prefer the name on the price line if it's substantial
       const name = nameFromLine.length > 5 ? nameFromLine : `${currentName} ${nameFromLine}`.trim()
       if (name.length > 3) items.push({ name, price, tags: parseTags(name) })
       currentName = ''
@@ -111,7 +112,11 @@ export async function scrapeSandwicher(): Promise<RestaurantMenu> {
       await navEl.click()
       await new Promise(r => setTimeout(r, 1800))
 
+      // Extract text from the active slide only.
+      // Wix uses aria-hidden="true/false" on slide panels — only the active
+      // panel has aria-hidden="false". Fall back to full body text if not found.
       const { slideText, foundDate } = await page.evaluate(() => {
+        // Find the active panel by aria-hidden="false"
         const allWithAriaHidden = Array.from(document.querySelectorAll('[aria-hidden]'))
         const activePanel = allWithAriaHidden.find(
           el => el.getAttribute('aria-hidden') === 'false' &&
@@ -122,13 +127,16 @@ export async function scrapeSandwicher(): Promise<RestaurantMenu> {
           ? (activePanel as HTMLElement).innerText
           : (document.body as HTMLElement).innerText
 
+        // Find the German date in the slide text
         const m = text.match(/\d{1,2}\.\s*(?:Januar|Februar|März|April|Mai|Juni|Juli|August|September|Oktober|November|Dezember)\s*\d{4}/i)
         return { slideText: text, foundDate: m ? m[0] : null }
       })
 
+      // Use the date found IN the slide to map items — don't trust tab order
       const isoDate = foundDate ? parseDate(foundDate) : getDateForWeekdayIndex(i)
       if (!isoDate) continue
 
+      // Skip duplicates (can happen if multiple tabs show same slide)
       if (days.some(d => d.date === isoDate)) continue
 
       const items = parseItemsFromSlide(slideText)
