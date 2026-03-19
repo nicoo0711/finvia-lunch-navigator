@@ -56,17 +56,20 @@ function getDateForWeekdayIndex(i: number): string {
   const monday = new Date(now)
   monday.setDate(now.getDate() - (day === 0 ? 6 : day - 1))
   monday.setDate(monday.getDate() + i)
-  return monday.toLocaleDateString('sv-SE', { timeZone: 'Europe/Berlin' })
+  const y = monday.getFullYear()
+  const m = String(monday.getMonth() + 1).padStart(2, '0')
+  const d = String(monday.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
 }
 
+const GERMAN_MONTHS = [
+  'Januar', 'Februar', 'März', 'April', 'Mai', 'Juni',
+  'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember',
+]
+
 function toGermanDate(isoDate: string): string {
-  const d = new Date(isoDate + 'T12:00:00')
-  return d.toLocaleDateString('de-DE', {
-    timeZone: 'Europe/Berlin',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  })
+  const [year, month, day] = isoDate.split('-').map(Number)
+  return `${day}. ${GERMAN_MONTHS[month - 1]} ${year}`
 }
 
 export async function scrapeSandwicher(): Promise<RestaurantMenu> {
