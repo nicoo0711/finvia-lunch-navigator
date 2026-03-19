@@ -92,6 +92,8 @@ export async function scrapeSandwicher(): Promise<RestaurantMenu> {
 
   try {
     const page = await browser.newPage()
+    await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36')
+    await page.setExtraHTTPHeaders({ 'Accept-Language': 'de-DE,de;q=0.9' })
     await page.goto('https://www.sandwicher.de', { waitUntil: 'networkidle2', timeout: 30000 })
     await new Promise(r => setTimeout(r, 4000))
 
