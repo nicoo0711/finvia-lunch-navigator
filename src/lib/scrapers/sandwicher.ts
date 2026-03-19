@@ -56,7 +56,9 @@ function parseItemsFromSlide(text: string): MenuItem[] {
 
     const price = parsePrice(line)
     if (price > 0 && price > 3 && price < 30) {
-      const nameFromLine = line.replace(/([\d]+[.,][\d]+)\s*€/, '').trim()
+      const rawName = line.replace(/([\d]+[.,][\d]+)\s*€/, '').trim()
+      // Strip any page tagline that bleeds into the same line as the price
+      const nameFromLine = rawName.replace(/steckt zwischen zwei scheiben\s*/gi, '').trim()
       // Prefer the name on the price line if it's substantial
       const name = nameFromLine.length > 5 ? nameFromLine : `${currentName} ${nameFromLine}`.trim()
       if (name.length > 3) items.push({ name, price, tags: parseTags(name) })
