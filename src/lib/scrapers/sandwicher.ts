@@ -37,7 +37,8 @@ function parseItemsFromSection(text: string): MenuItem[] {
     const price = parsePrice(line)
     if (price > 3 && price < 30) {
       const nameFromLine = line.replace(/([\d]+[.,][\d]+)\s*€/, '').trim()
-      const name = nameFromLine.length > 5 ? nameFromLine : `${currentName} ${nameFromLine}`.trim()
+      // Always combine currentName (first line of multi-line item) with nameFromLine
+      const name = [currentName, nameFromLine].filter(s => s.length > 0).join(' ').trim()
       if (name.length > 3) items.push({ name, price, tags: parseTags(name) })
       currentName = ''
     } else if (line.length < 80 && !NOISE_PATTERNS.some(p => p.test(line))) {
