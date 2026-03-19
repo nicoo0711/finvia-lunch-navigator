@@ -120,16 +120,15 @@ export async function scrapeSandwicher(): Promise<RestaurantMenu> {
       const dateIdx = text.indexOf(germanDate)
       if (dateIdx < 0) continue
 
-      let startIdx = 0
-      if (i > 0) {
-        const prevGermanDate = toGermanDate(getDateForWeekdayIndex(i - 1))
-        const prevIdx = text.indexOf(prevGermanDate)
-        if (prevIdx >= 0 && prevIdx < dateIdx) {
-          startIdx = prevIdx + prevGermanDate.length
-        }
-      }
+      // Menu items appear AFTER the date header
+      const afterDate = text.slice(dateIdx + germanDate.length)
 
-      const section = text.slice(startIdx, dateIdx)
+      // Stop at next date pattern (handles visibility:hidden where all days appear)
+      const nextDateMatch = afterDate.search(
+        /\d{1,2}\. (?:Januar|Februar|März|April|Mai|Juni|Juli|August|September|Oktober|November|Dezember) \d{4}/
+      )
+      const section = nextDateMatch >= 0 ? afterDate.slice(0, nextDateMatch) : afterDate
+
       const items = parseItemsFromSection(section)
       if (items.length > 0) days.push({ date: isoDate, items })
     }
