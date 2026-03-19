@@ -21,52 +21,38 @@ const MONTHS: Record<string, string> = {
   september: '09', oktober: '10', november: '11', dezember: '12',
 }
 
-function parseDate(text: string): string | null {
-  const m = text.match(/(\d{1,2})\.\s*([a-zA-ZäöüÄÖÜ]+)\s*(\d{4})/i)
-  if (m) {
-    const month = MONTHS[m[2].toLowerCase()]
-    if (month) return `${m[3]}-${month}-${m[1].padStart(2, '0')}`
-  }
-  return null
-}
-
-// Noise lines from the Sandwicher website that are NOT menu items
+// Lines to skip as item names (page UI noise)
 const NOISE_PATTERNS = [
   /steckt zwischen/i,
   /sandwicher/i,
   /reuterweg/i,
   /ob für/i,
   /heute/i,
-  /\d{1,2}:\d{2}/,    // time strings like "9:00"
+  /\d{1,2}:\d{2}/,
   /mo[–-]fr/i,
   /täglich/i,
   /unsere/i,
   /willkommen/i,
 ]
 
-function parseItemsFromSlide(text: string): MenuItem[] {
+function parseSection(section: string): MenuItem[] {
   const items: MenuItem[] = []
-  const cleaned = text.replace(/\u200B/g, '')
-  const lines = cleaned.split('\n').map(l => l.trim()).filter(l => l.length > 3)
+  const lines = section.replace(/\u200B/g, '').split('\n').map(l => l.trim()).filter(l => l.length > 3)
   let currentName = ''
 
   for (const line of lines) {
-    // Stop when we hit the date marker
+    // Stop at any date-like string (section boundary)
     if (/\d{1,2}\.\s*[a-zA-ZäöüÄÖÜ]+\s*\d{4}/.test(line)) break
 
     const price = parsePrice(line)
     if (price > 0 && price > 3 && price < 30) {
       const rawName = line.replace(/([\d]+[.,][\d]+)\s*€/, '').trim()
-      // Strip any page tagline that bleeds into the same line as the price
+      // Strip tagline that bleeds into the same line as price
       const nameFromLine = rawName.replace(/steckt zwischen zwei scheiben\s*/gi, '').trim()
-      // Prefer the name on the price line if it's substantial
       const name = nameFromLine.length > 5 ? nameFromLine : `${currentName} ${nameFromLine}`.trim()
       if (name.length > 3) items.push({ name, price, tags: parseTags(name) })
       currentName = ''
-    } else if (
-      line.length < 80 &&
-      !NOISE_PATTERNS.some(p => p.test(line))
-    ) {
+    } else if (line.length < 80 && !NOISE_PATTERNS.some(p => p.test(line))) {
       currentName = line
     }
   }
@@ -82,6 +68,16 @@ function getDateForWeekdayIndex(i: number): string {
   monday.setDate(now.getDate() - (day === 0 ? 6 : day - 1))
   monday.setDate(monday.getDate() + i)
   return monday.toLocaleDateString('sv-SE', { timeZone: 'Europe/Berlin' })
+}
+
+function toGermanDate(isoDate: string): string {
+  const d = new Date(isoDate + 'T12:00:00')
+  return d.toLocaleDateString('de-DE', {
+    timeZone: 'Europe/Berlin',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  })
 }
 
 export async function scrapeSandwicher(): Promise<RestaurantMenu> {
@@ -106,42 +102,56 @@ export async function scrapeSandwicher(): Promise<RestaurantMenu> {
     await page.goto('https://www.sandwicher.de', { waitUntil: 'domcontentloaded', timeout: 20000 })
     await new Promise(r => setTimeout(r, 3000))
 
-    for (let i = 0; i < WEEKDAY_LABELS.length; i++) {
-      const label = WEEKDAY_LABELS[i]
+    // Click all tabs to ensure every slide's content is loaded into the DOM
+    for (const label of WEEKDAY_LABELS) {
       const navEl = await page.$(`[aria-label="${label}"]`)
-      if (!navEl) continue
+      if (navEl) {
+        await navEl.click()
+        await new Promise(r => setTimeout(r, 800))
+      }
+    }
 
-      await navEl.click()
-      await new Promise(r => setTimeout(r, 1800))
+    // Get text from ALL DOM nodes including hidden elements (textContent, not innerText).
+    // Wix sliders keep all slides in the DOM; innerText skips hidden ones.
+    const fullText: string = await page.evaluate(() => {
+      const parts: string[] = []
+      const walk = (node: Node) => {
+        if (node.nodeType === Node.TEXT_NODE) {
+          const t = node.textContent?.trim()
+          if (t) parts.push(t)
+        } else if (node.nodeType === Node.ELEMENT_NODE) {
+          const tag = (node as Element).tagName.toLowerCase()
+          if (['script', 'style', 'noscript'].includes(tag)) return
+          node.childNodes.forEach(walk)
+          if (['p', 'div', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'span', 'br'].includes(tag)) {
+            parts.push('\n')
+          }
+        }
+      }
+      walk(document.body)
+      return parts.join('')
+    })
 
-      // Extract text from the active slide only.
-      // Wix uses aria-hidden="true/false" on slide panels — only the active
-      // panel has aria-hidden="false". Fall back to full body text if not found.
-      const { slideText, foundDate } = await page.evaluate(() => {
-        // Find the active panel by aria-hidden="false"
-        const allWithAriaHidden = Array.from(document.querySelectorAll('[aria-hidden]'))
-        const activePanel = allWithAriaHidden.find(
-          el => el.getAttribute('aria-hidden') === 'false' &&
-                (el as HTMLElement).innerText?.length > 50
-        )
+    // Build date entries: find where each day's date marker sits in the full text.
+    // The date appears at the END of each day's slide content.
+    const dateEntries = WEEKDAY_LABELS.map((_, i) => {
+      const isoDate = getDateForWeekdayIndex(i)
+      const germanDate = toGermanDate(isoDate)
+      const idx = fullText.indexOf(germanDate)
+      return { isoDate, germanDate, idx }
+    })
 
-        const text = activePanel
-          ? (activePanel as HTMLElement).innerText
-          : (document.body as HTMLElement).innerText
+    for (let i = 0; i < dateEntries.length; i++) {
+      const { isoDate, germanDate, idx: endIdx } = dateEntries[i]
+      if (endIdx < 0) continue
 
-        // Find the German date in the slide text
-        const m = text.match(/\d{1,2}\.\s*(?:Januar|Februar|März|April|Mai|Juni|Juli|August|September|Oktober|November|Dezember)\s*\d{4}/i)
-        return { slideText: text, foundDate: m ? m[0] : null }
-      })
+      // Start = right after the previous date marker (or beginning of file for Monday)
+      const prevIdx = dateEntries.slice(0, i).map(e => e.idx).filter(p => p >= 0)
+      const startIdx = prevIdx.length > 0 ? Math.max(...prevIdx) + 1 : 0
 
-      // Use the date found IN the slide to map items — don't trust tab order
-      const isoDate = foundDate ? parseDate(foundDate) : getDateForWeekdayIndex(i)
-      if (!isoDate) continue
-
-      // Skip duplicates (can happen if multiple tabs show same slide)
-      if (days.some(d => d.date === isoDate)) continue
-
-      const items = parseItemsFromSlide(slideText)
+      // Section: everything between previous date and this date (date is at end of section)
+      const section = fullText.slice(startIdx, endIdx + germanDate.length)
+      const items = parseSection(section)
       if (items.length > 0) days.push({ date: isoDate, items })
     }
 
