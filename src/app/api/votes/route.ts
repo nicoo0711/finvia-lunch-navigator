@@ -48,11 +48,14 @@ export async function POST(req: NextRequest) {
     if (votes[rid].length === 0) delete votes[rid]
   }
 
-  // TTL: expire at midnight (seconds until next midnight Berlin time)
+  // TTL: expire at 15:00 Berlin time today (or 15:00 tomorrow if already past)
   const now = new Date()
-  const berlinOffset = 2 * 3600 // CEST; good enough
-  const secondsUntilMidnight = 86400 - ((now.getTime() / 1000 + berlinOffset) % 86400)
-  await redis.set(key, votes, { ex: Math.ceil(secondsUntilMidnight) })
+  const berlin = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Berlin' }))
+  const reset = new Date(berlin)
+  reset.setHours(15, 0, 0, 0)
+  if (berlin >= reset) reset.setDate(reset.getDate() + 1)
+  const secondsUntilReset = Math.ceil((reset.getTime() - berlin.getTime()) / 1000)
+  await redis.set(key, votes, { ex: secondsUntilReset })
 
   return NextResponse.json(votes)
 }
