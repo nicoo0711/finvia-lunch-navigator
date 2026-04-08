@@ -30,7 +30,7 @@ export function GambleWheel({ restaurants }: { restaurants: Restaurant[] }) {
   // Persist selection to localStorage whenever it changes
   useEffect(() => {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify([...selectedIds]))
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(selectedIds)))
     } catch { /* ignore */ }
   }, [selectedIds])
 
