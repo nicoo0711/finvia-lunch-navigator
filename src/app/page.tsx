@@ -195,7 +195,28 @@ export default function Home() {
 
         {/* Restaurants in der Nähe */}
         {activeTab === 'restaurants' && (<section className={styles.nearbySection}>
-          <h2 className={styles.sectionTitle}>Restaurants in der Nähe · {formatDate(selectedDate)}</h2>
+          <div className={styles.sectionHeader}>
+            <h2 className={styles.sectionTitle}>Restaurants in der Nähe · {formatDate(selectedDate)}</h2>
+            <div className={styles.officeCard}>
+              <div className={styles.officeCardTop}>
+                <span className={styles.officeIcon}>🏠</span>
+                <span className={styles.officeTitle}>Esse im Büro</span>
+              </div>
+              <div className={styles.officeNames}>
+                {(votes['__office__'] ?? []).map(n => (
+                  <span key={n} className={`${styles.officePill} ${myName && n.toLowerCase() === myName.toLowerCase() ? styles.officePillMe : ''}`} title={n}>
+                    {n.split(/\s+/).map((w: string) => w[0]?.toUpperCase() ?? '').slice(0, 2).join('')}
+                  </span>
+                ))}
+              </div>
+              <button
+                className={`${styles.officeBtn} ${(votes['__office__'] ?? []).some(n => myName && n.toLowerCase() === myName.toLowerCase()) ? styles.officeBtnActive : ''}`}
+                onClick={() => handleVoteClick('__office__')}
+              >
+                {(votes['__office__'] ?? []).some(n => myName && n.toLowerCase() === myName.toLowerCase()) ? '✓ Dabei' : 'Ich auch'}
+              </button>
+            </div>
+          </div>
           <div className={styles.nearbyGrid}>
             {[...RESTAURANTS].sort((a, b) => (votes[b.id]?.length ?? 0) - (votes[a.id]?.length ?? 0)).map((restaurant) => {
               const menu = menus.find((m) => m.restaurantId === restaurant.id)

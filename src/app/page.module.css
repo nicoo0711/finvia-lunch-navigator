@@ -391,3 +391,90 @@
 }
 
 .modalBtn:hover { background: #027080; }
+
+/* ── Section header with office card ── */
+.sectionHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.sectionHeader .sectionTitle {
+  margin-bottom: 0;
+}
+
+.officeCard {
+  background: var(--surface, #fff);
+  border: 1.5px solid var(--border, #e8e8e8);
+  border-radius: var(--radius, 12px);
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 160px;
+  flex-shrink: 0;
+}
+
+.officeCardTop {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.officeIcon { font-size: 16px; }
+
+.officeTitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.officeNames {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  min-height: 20px;
+}
+
+.officePill {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #f0f0f0;
+  color: #555;
+  font-size: 9px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.officePillMe {
+  background: #038B9B;
+  color: #fff;
+}
+
+.officeBtn {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1.5px solid #038B9B;
+  background: transparent;
+  color: #038B9B;
+  cursor: pointer;
+  transition: all 0.15s;
+  align-self: flex-start;
+}
+
+.officeBtn:hover { background: rgba(3,139,155,0.08); }
+
+.officeBtnActive {
+  background: #038B9B;
+  color: #fff;
+}
+
+.officeBtnActive:hover { background: #027080; }
