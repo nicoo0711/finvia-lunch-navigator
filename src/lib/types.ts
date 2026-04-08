@@ -235,6 +235,20 @@ export const RESTAURANTS: Restaurant[] = [
     ],
   },
   {
+    id: 'mariagiovanni',
+    name: 'Maria e Giovanni',
+    address: 'Grüneburgweg 11',
+    hours: 'Mo–Sa 11:30–15:00 Uhr',
+    url: 'https://maria-e-giovanni.de/',
+    scrapeType: 'manual',
+    emoji: '🍕',
+    color: '#FFF0F0',
+    logo: 'https://www.google.com/s2/favicons?domain=maria-e-giovanni.de&sz=64',
+    staticItems: [
+      { name: 'Mittagsmenü (wechselt täglich) → Tageskarte' },
+    ],
+  },
+  {
     id: 'bestworscht',
     name: 'Best Worscht in Town',
     address: 'Grüneburgweg 37',
