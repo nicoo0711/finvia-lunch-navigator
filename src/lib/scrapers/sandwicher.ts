@@ -29,31 +29,36 @@ async function findPdfUrl(): Promise<string> {
     await page.goto('https://www.sandwicher.de/bestellen', { waitUntil: 'domcontentloaded', timeout: 20000 })
     await new Promise(r => setTimeout(r, 4000))
 
-    // Find "Wochenkarte" link href directly — more reliable than clicking
-    const pdfUrl = await page.evaluate(() => {
-      const html = document.documentElement.innerHTML
-      // Look for "Wochenkarte" context: find the word and nearby PDF URL
-      const wochenIdx = html.toLowerCase().indexOf('wochenkarte')
-      if (wochenIdx >= 0) {
-        const nearby = html.slice(Math.max(0, wochenIdx - 500), wochenIdx + 2000)
-        const match = nearby.match(/https:\/\/[^"'\s]*ugd\/[^"'\s]*\.pdf/i)
-        if (match) return match[0]
-      }
-      // Fallback: any ugd PDF on the page (should still be Sandwicher's)
-      const match = html.match(/https:\/\/[^"'\s]*ugd\/b086f8[^"'\s]*\.pdf/i)
-      return match ? match[0] : null
+    // The "Wochenkarte öffnen" button opens the PDF in a new tab.
+    // Listen for the new page/popup and grab its URL.
+    const browser2 = page.browser()
+    const newPagePromise = new Promise<string>((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error('Kein neues Tab nach Klick')), 8000)
+      browser2.once('targetcreated', async target => {
+        clearTimeout(timeout)
+        const url = target.url()
+        resolve(url)
+      })
     })
 
-    if (pdfUrl) return pdfUrl
-
-    // Last resort: intercept by actually clicking
+    // Click "Wochenkarte öffnen"
     await page.evaluate(() => {
-      const els = Array.from(document.querySelectorAll('a, button, [role="button"]'))
-      const el = els.find(e => e.textContent?.toLowerCase().includes('wochenkarte'))
+      const all = Array.from(document.querySelectorAll('*'))
+      const el = all.find(e =>
+        e.textContent?.toLowerCase().includes('wochenkarte') &&
+        (e.tagName === 'A' || e.tagName === 'BUTTON' || e.getAttribute('role') === 'button' || e.children.length === 0)
+      )
       if (el) (el as HTMLElement).click()
     })
-    await new Promise(r => setTimeout(r, 2000))
-    if (interceptedPdfUrl) return interceptedPdfUrl
+
+    try {
+      const newUrl = await newPagePromise
+      if (newUrl && newUrl.includes('.pdf')) return newUrl
+      // If new tab URL isn't a PDF directly, check intercepted requests
+      if (interceptedPdfUrl) return interceptedPdfUrl
+    } catch {
+      if (interceptedPdfUrl) return interceptedPdfUrl
+    }
 
     throw new Error('Keine Wochenkarte-PDF auf sandwicher.de/bestellen gefunden')
   } finally {
