@@ -15,64 +15,40 @@ async function findPdfUrl(): Promise<string> {
   })
   try {
     const page = await browser.newPage()
+
+    // Intercept ALL JS/JSON responses during page load.
+    // Wix loads the full page model as JSON — the PDF URL must be in there.
+    const foundUrls: string[] = []
+    page.on('response', async resp => {
+      const ct = resp.headers()['content-type'] ?? ''
+      if (!ct.includes('json') && !ct.includes('javascript')) return
+      try {
+        const text = await resp.text()
+        const matches = text.match(/b086f8_[a-f0-9]{32}\.pdf/gi)
+        if (matches) {
+          for (const m of matches) {
+            foundUrls.push(`https://static.wixstatic.com/ugd/${m}`)
+          }
+        }
+      } catch { /* ignore */ }
+    })
+
     await page.goto('https://www.sandwicher.de/bestellen', { waitUntil: 'networkidle0', timeout: 30000 })
-    await new Promise(r => setTimeout(r, 3000))
+    await new Promise(r => setTimeout(r, 2000))
 
-    // Strategy 1: find <a href="...pdf"> near "wochenkarte" text in fully rendered DOM
-    const fromHref = await page.evaluate(() => {
-      // Check all <a> tags for PDF href
-      const links = Array.from(document.querySelectorAll('a[href]'))
-      for (const a of links) {
-        const href = (a as HTMLAnchorElement).href
-        if (href.includes('.pdf') && href.includes('ugd')) {
-          // Is this link near "wochenkarte" text?
-          const container = a.closest('[id], [data-testid], section') ?? document.body
-          if (container.textContent?.toLowerCase().includes('wochenkarte')) return href
-          // Or does the link itself contain wochenkarte text?
-          if (a.textContent?.toLowerCase().includes('wochenkarte')) return href
-        }
-      }
-      // Fallback: any PDF link on the page
-      for (const a of links) {
-        const href = (a as HTMLAnchorElement).href
-        if (href.includes('.pdf') && href.includes('ugd')) return href
-      }
-      return null
-    })
-    if (fromHref) return fromHref
-
-    // Strategy 2: snapshot tabs before click, then diff after to find the new PDF tab
-    const urlsBefore = new Set(browser.targets().map(t => t.url()))
-
-    await page.evaluate(() => {
-      const all = Array.from(document.querySelectorAll('*'))
-      const el = all.find(e =>
-        e.children.length === 0 &&
-        e.textContent?.toLowerCase().includes('wochenkarte')
-      )
-      if (el) (el as HTMLElement).click()
-    })
-
-    // Wait for the new tab to appear and navigate to the PDF
-    for (let i = 0; i < 20; i++) {
-      await new Promise(r => setTimeout(r, 500))
-      for (const target of browser.targets()) {
-        const url = target.url()
-        if (!urlsBefore.has(url) && (url.includes('.pdf') || url.includes('ugd'))) {
-          return url
-        }
-        // New tab may still be loading — check its current URL
-        if (!urlsBefore.has(url) && url !== 'about:blank') {
-          try {
-            const newPage = await target.page()
-            const navUrl = newPage?.url() ?? ''
-            if (navUrl.includes('.pdf') || navUrl.includes('ugd')) return navUrl
-          } catch { /* ignore */ }
-        }
-      }
+    // Return the LAST found PDF (most recently referenced = most likely the current week)
+    if (foundUrls.length > 0) {
+      return foundUrls[foundUrls.length - 1]
     }
 
-    throw new Error('Keine Wochenkarte-PDF auf sandwicher.de/bestellen gefunden')
+    // Fallback: check rendered <a> tags
+    const hrefUrl = await page.evaluate(() => {
+      const links = Array.from(document.querySelectorAll('a[href*=".pdf"]'))
+      return links.map(a => (a as HTMLAnchorElement).href).find(h => h.includes('ugd')) ?? null
+    })
+    if (hrefUrl) return hrefUrl
+
+    throw new Error(`Keine PDF gefunden. Gefundene URLs: ${foundUrls.join(', ')}`)
   } finally {
     await browser.close()
   }
@@ -120,7 +96,7 @@ export async function scrapeSandwicher(): Promise<RestaurantMenu> {
 
   const parsed = JSON.parse(jsonMatch[0]) as { date: string; name: string; price: number }[]
 
-  // Remap PDF dates to current week by weekday — works even if PDF has old dates
+  // Remap PDF dates to current week by weekday
   const now = new Date()
   const dow = now.getDay()
   const thisMonday = new Date(now)
