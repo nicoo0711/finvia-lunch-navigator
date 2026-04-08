@@ -181,7 +181,7 @@ export default function Home() {
           className={`${styles.mainTab} ${activeTab === 'restaurants' ? styles.mainTabActive : ''}`}
           onClick={() => setActiveTab('restaurants')}
         >
-          Restaurants
+          Abstimmung
         </button>
         <button
           className={`${styles.mainTab} ${activeTab === 'gamble' ? styles.mainTabActive : ''}`}
