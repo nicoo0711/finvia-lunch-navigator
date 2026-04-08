@@ -25,31 +25,37 @@ async function findPdfUrl(): Promise<string> {
       }
     })
 
-    // Navigate to the ordering page and click "Wochenkarte"
+    // Navigate to the ordering page and wait for full render
     await page.goto('https://www.sandwicher.de/bestellen', { waitUntil: 'domcontentloaded', timeout: 20000 })
-    await new Promise(r => setTimeout(r, 3000))
+    await new Promise(r => setTimeout(r, 4000))
 
-    // Try clicking anything labeled "Wochenkarte"
-    const clicked = await page.evaluate(() => {
-      const els = Array.from(document.querySelectorAll('a, button, [role="button"]'))
-      const el = els.find(e => e.textContent?.toLowerCase().includes('wochenkarte'))
-      if (el) { (el as HTMLElement).click(); return true }
-      return false
-    })
-    if (clicked) await new Promise(r => setTimeout(r, 2000))
-
-    // If we intercepted a PDF request, return it
-    if (interceptedPdfUrl) return interceptedPdfUrl
-
-    // Otherwise search the full page HTML for any PDF URL
+    // Find "Wochenkarte" link href directly — more reliable than clicking
     const pdfUrl = await page.evaluate(() => {
       const html = document.documentElement.innerHTML
-      const match = html.match(/https:\/\/[^"'\s]*ugd\/[^"'\s]*\.pdf/i)
-        ?? html.match(/https:\/\/[^"'\s]*sandwicher[^"'\s]*\.pdf/i)
+      // Look for "Wochenkarte" context: find the word and nearby PDF URL
+      const wochenIdx = html.toLowerCase().indexOf('wochenkarte')
+      if (wochenIdx >= 0) {
+        const nearby = html.slice(Math.max(0, wochenIdx - 500), wochenIdx + 2000)
+        const match = nearby.match(/https:\/\/[^"'\s]*ugd\/[^"'\s]*\.pdf/i)
+        if (match) return match[0]
+      }
+      // Fallback: any ugd PDF on the page (should still be Sandwicher's)
+      const match = html.match(/https:\/\/[^"'\s]*ugd\/b086f8[^"'\s]*\.pdf/i)
       return match ? match[0] : null
     })
-    if (!pdfUrl) throw new Error('Keine PDF-URL auf sandwicher.de/bestellen gefunden')
-    return pdfUrl
+
+    if (pdfUrl) return pdfUrl
+
+    // Last resort: intercept by actually clicking
+    await page.evaluate(() => {
+      const els = Array.from(document.querySelectorAll('a, button, [role="button"]'))
+      const el = els.find(e => e.textContent?.toLowerCase().includes('wochenkarte'))
+      if (el) (el as HTMLElement).click()
+    })
+    await new Promise(r => setTimeout(r, 2000))
+    if (interceptedPdfUrl) return interceptedPdfUrl
+
+    throw new Error('Keine Wochenkarte-PDF auf sandwicher.de/bestellen gefunden')
   } finally {
     await browser.close()
   }
