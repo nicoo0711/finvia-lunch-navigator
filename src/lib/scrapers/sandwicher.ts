@@ -1,7 +1,59 @@
 import { DayMenu, MenuItem, RestaurantMenu } from '../types'
 import Anthropic from '@anthropic-ai/sdk'
 
-const PDF_URL = 'https://www.sandwicher.de/_files/ugd/b086f8_efad15618a2044f388aae4c8f1e78639.pdf'
+async function findPdfUrl(): Promise<string> {
+  const chromium = (await import('@sparticuz/chromium-min')).default
+  const puppeteer = (await import('puppeteer-core')).default
+  const execPath = await chromium.executablePath(
+    'https://github.com/Sparticuz/chromium/releases/download/v131.0.1/chromium-v131.0.1-pack.tar'
+  )
+  const browser = await puppeteer.launch({
+    args: chromium.args,
+    defaultViewport: { width: 1280, height: 800 },
+    executablePath: execPath,
+    headless: true,
+  })
+  try {
+    const page = await browser.newPage()
+
+    // Intercept network requests to catch the PDF URL directly
+    let interceptedPdfUrl: string | null = null
+    page.on('request', req => {
+      const url = req.url()
+      if (url.includes('.pdf') && (url.includes('ugd') || url.includes('sandwicher'))) {
+        interceptedPdfUrl = url
+      }
+    })
+
+    // Navigate to the ordering page and click "Wochenkarte"
+    await page.goto('https://www.sandwicher.de/bestellen', { waitUntil: 'domcontentloaded', timeout: 20000 })
+    await new Promise(r => setTimeout(r, 3000))
+
+    // Try clicking anything labeled "Wochenkarte"
+    const clicked = await page.evaluate(() => {
+      const els = Array.from(document.querySelectorAll('a, button, [role="button"]'))
+      const el = els.find(e => e.textContent?.toLowerCase().includes('wochenkarte'))
+      if (el) { (el as HTMLElement).click(); return true }
+      return false
+    })
+    if (clicked) await new Promise(r => setTimeout(r, 2000))
+
+    // If we intercepted a PDF request, return it
+    if (interceptedPdfUrl) return interceptedPdfUrl
+
+    // Otherwise search the full page HTML for any PDF URL
+    const pdfUrl = await page.evaluate(() => {
+      const html = document.documentElement.innerHTML
+      const match = html.match(/https:\/\/[^"'\s]*ugd\/[^"'\s]*\.pdf/i)
+        ?? html.match(/https:\/\/[^"'\s]*sandwicher[^"'\s]*\.pdf/i)
+      return match ? match[0] : null
+    })
+    if (!pdfUrl) throw new Error('Keine PDF-URL auf sandwicher.de/bestellen gefunden')
+    return pdfUrl
+  } finally {
+    await browser.close()
+  }
+}
 
 function parseTags(name: string): MenuItem['tags'] {
   const lower = name.toLowerCase()
@@ -13,7 +65,9 @@ function parseTags(name: string): MenuItem['tags'] {
 }
 
 export async function scrapeSandwicher(): Promise<RestaurantMenu> {
-  const response = await fetch(PDF_URL)
+  const pdfUrl = await findPdfUrl()
+
+  const response = await fetch(pdfUrl)
   if (!response.ok) throw new Error(`PDF fetch fehlgeschlagen: ${response.status}`)
   const buffer = await response.arrayBuffer()
   const pdfBase64 = Buffer.from(buffer).toString('base64')
@@ -31,7 +85,7 @@ export async function scrapeSandwicher(): Promise<RestaurantMenu> {
         },
         {
           type: 'text',
-          text: 'Das ist der Wochenplan eines Restaurants. Extrahiere alle Gerichte pro Tag mit Name und Preis. Antworte NUR im JSON-Format: [{"date": "YYYY-MM-DD", "name": "Gerichtname", "price": 9.50}]. Das Datum steht als Wochentag + deutsches Datum im PDF (z.B. "Montag, 23. März 2026").',
+          text: 'Das ist der Wochenplan eines Restaurants. Extrahiere alle Gerichte pro Tag mit Name und Preis. Antworte NUR im JSON-Format: [{"date": "YYYY-MM-DD", "name": "Gerichtname", "price": 9.50}]. Das Datum steht als Wochentag + deutsches Datum im PDF (z.B. "Montag, 7. April 2026").',
         },
       ],
     }],
@@ -43,20 +97,18 @@ export async function scrapeSandwicher(): Promise<RestaurantMenu> {
 
   const parsed = JSON.parse(jsonMatch[0]) as { date: string; name: string; price: number }[]
 
-  // Remap PDF dates to the current week.
-  // Sandwicher may not update the PDF URL every week, so the dates in the PDF
-  // can lag behind. We preserve the weekday (Mon=this Mon, Tue=this Tue, ...)
-  // and replace the year/month/day with this week's corresponding date.
+  // Remap PDF dates to the current week by weekday position.
+  // Ensures menu always appears even if the PDF has last week's dates.
   const now = new Date()
-  const dow = now.getDay() // 0=Sun
+  const dow = now.getDay()
   const thisMonday = new Date(now)
   thisMonday.setDate(now.getDate() - (dow === 0 ? 6 : dow - 1))
   thisMonday.setHours(0, 0, 0, 0)
 
   function remapToCurrentWeek(isoDate: string): string {
     const d = new Date(isoDate + 'T12:00:00Z')
-    const wd = d.getUTCDay() // 0=Sun,1=Mon,...
-    const offset = wd === 0 ? 6 : wd - 1 // days from Monday
+    const wd = d.getUTCDay()
+    const offset = wd === 0 ? 6 : wd - 1
     const mapped = new Date(thisMonday)
     mapped.setDate(thisMonday.getDate() + offset)
     const y = mapped.getFullYear()
