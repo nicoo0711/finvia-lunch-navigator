@@ -1,28 +1,66 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Restaurant } from '@/lib/types'
 import styles from './GambleWheel.module.css'
 
 const SIZE = 480
+const STORAGE_KEY = 'gamble-selection'
 
 export function GambleWheel({ restaurants }: { restaurants: Restaurant[] }) {
   const wheelRef = useRef<HTMLDivElement>(null)
   const rotationRef = useRef(0)
   const [spinning, setSpinning] = useState(false)
   const [winner, setWinner] = useState<Restaurant | null>(null)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set(restaurants.map(r => r.id)))
 
-  const n = restaurants.length
-  const sliceAngle = 360 / n
+  // Load persisted selection from localStorage on mount
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY)
+      if (stored) {
+        const parsed: string[] = JSON.parse(stored)
+        // Only keep ids that still exist in restaurant list
+        const valid = parsed.filter(id => restaurants.some(r => r.id === id))
+        if (valid.length > 0) setSelectedIds(new Set(valid))
+      }
+    } catch { /* ignore */ }
+  }, [restaurants])
 
-  const gradient = restaurants.map((r, i) => {
+  // Persist selection to localStorage whenever it changes
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify([...selectedIds]))
+    } catch { /* ignore */ }
+  }, [selectedIds])
+
+  const active = restaurants.filter(r => selectedIds.has(r.id))
+  const n = active.length
+  const sliceAngle = n > 0 ? 360 / n : 360
+
+  const gradient = active.map((r, i) => {
     const start = i * sliceAngle
     const end = (i + 1) * sliceAngle
     return `${r.color || '#f0f0f0'} ${start}deg ${end}deg`
   }).join(', ')
 
+  function toggleRestaurant(id: string) {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) {
+        // Don't deselect last one
+        if (next.size <= 1) return prev
+        next.delete(id)
+      } else {
+        next.add(id)
+      }
+      return next
+    })
+    setWinner(null)
+  }
+
   function spin() {
-    if (spinning) return
+    if (spinning || n === 0) return
     setSpinning(true)
     setWinner(null)
 
@@ -48,14 +86,14 @@ export function GambleWheel({ restaurants }: { restaurants: Restaurant[] }) {
         rotationRef.current = ((endRot % 360) + 360) % 360
         setSpinning(false)
         const normalized = ((-endRot % 360) + 360) % 360
-        setWinner(restaurants[Math.floor(normalized / sliceAngle) % n])
+        setWinner(active[Math.floor(normalized / sliceAngle) % n])
       }
     }
 
     requestAnimationFrame(animate)
   }
 
-  const imgSize = Math.max(36, Math.min(56, Math.floor(400 / n)))
+  const imgSize = Math.max(36, Math.min(56, Math.floor(400 / Math.max(n, 1))))
 
   return (
     <div className={styles.container}>
@@ -85,9 +123,9 @@ export function GambleWheel({ restaurants }: { restaurants: Restaurant[] }) {
         <div
           ref={wheelRef}
           className={styles.wheel}
-          style={{ width: SIZE, height: SIZE, background: `conic-gradient(${gradient})` }}
+          style={{ width: SIZE, height: SIZE, background: n > 0 ? `conic-gradient(${gradient})` : '#eee' }}
         >
-          {restaurants.map((_, i) => (
+          {active.map((_, i) => (
             <div
               key={i}
               className={styles.divider}
@@ -95,7 +133,7 @@ export function GambleWheel({ restaurants }: { restaurants: Restaurant[] }) {
             />
           ))}
 
-          {restaurants.map((r, i) => {
+          {active.map((r, i) => {
             const angleDeg = i * sliceAngle + sliceAngle / 2
             const angleRad = (angleDeg - 90) * Math.PI / 180
             const logoR = (SIZE / 2) * 0.62
@@ -119,9 +157,33 @@ export function GambleWheel({ restaurants }: { restaurants: Restaurant[] }) {
         <div className={styles.centerDot} />
       </div>
 
-      <button className={styles.spinBtn} onClick={spin} disabled={spinning}>
+      <button className={styles.spinBtn} onClick={spin} disabled={spinning || n === 0}>
         {spinning ? 'Dreht…' : '🎰 Drehen!'}
       </button>
+
+      <div className={styles.pickerSection}>
+        <p className={styles.pickerTitle}>Teilnehmer auswählen</p>
+        <div className={styles.pickerGrid}>
+          {restaurants.map(r => {
+            const isSelected = selectedIds.has(r.id)
+            return (
+              <button
+                key={r.id}
+                className={`${styles.pickerPill} ${isSelected ? styles.pickerPillActive : styles.pickerPillInactive}`}
+                onClick={() => toggleRestaurant(r.id)}
+                title={isSelected ? 'Ausschließen' : 'Einschließen'}
+              >
+                {r.logo
+                  ? <img src={r.logo} alt="" width={18} height={18} style={{ objectFit: 'contain', borderRadius: 3, background: r.color, flexShrink: 0 }} />
+                  : <span style={{ fontSize: 16, lineHeight: 1, flexShrink: 0 }}>{r.emoji}</span>
+                }
+                <span className={styles.pickerName}>{r.name}</span>
+                <span className={styles.pickerCheck}>{isSelected ? '✓' : '+'}</span>
+              </button>
+            )
+          })}
+        </div>
+      </div>
     </div>
   )
 }

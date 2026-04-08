@@ -134,3 +134,75 @@
   color: #038B9B;
 }
 .winnerLink:hover { opacity: 0.7; }
+
+/* ── Picker ── */
+.pickerSection {
+  width: 100%;
+  max-width: 560px;
+  margin-top: 0.5rem;
+}
+
+.pickerTitle {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 0.75rem;
+  text-align: center;
+}
+
+.pickerGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}
+
+.pickerPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px 6px 8px;
+  border-radius: 999px;
+  border: 1.5px solid transparent;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+  background: none;
+}
+
+.pickerPillActive {
+  border-color: #038B9B;
+  background: rgba(3, 139, 155, 0.08);
+  color: var(--text);
+}
+
+.pickerPillInactive {
+  border-color: var(--border, #e0e0e0);
+  background: transparent;
+  color: var(--text-muted);
+  opacity: 0.6;
+}
+
+.pickerPill:hover {
+  opacity: 1;
+  transform: scale(1.03);
+}
+
+.pickerName {
+  max-width: 130px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pickerCheck {
+  font-size: 12px;
+  font-weight: 700;
+  color: #038B9B;
+  margin-left: 2px;
+  width: 14px;
+  text-align: center;
+}
