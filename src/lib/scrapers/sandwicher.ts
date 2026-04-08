@@ -25,40 +25,55 @@ async function findPdfUrl(): Promise<string> {
       }
     })
 
-    // Navigate to the ordering page and wait for full render
-    await page.goto('https://www.sandwicher.de/bestellen', { waitUntil: 'domcontentloaded', timeout: 20000 })
-    await new Promise(r => setTimeout(r, 4000))
+    // Navigate to the ordering page and wait for Wix JS to inject page data
+    await page.goto('https://www.sandwicher.de/bestellen', { waitUntil: 'networkidle0', timeout: 30000 })
+    await new Promise(r => setTimeout(r, 2000))
 
-    // The "Wochenkarte öffnen" button opens the PDF in a new tab.
-    // Listen for the new page/popup and grab its URL.
-    const browser2 = page.browser()
-    const newPagePromise = new Promise<string>((resolve, reject) => {
-      const timeout = setTimeout(() => reject(new Error('Kein neues Tab nach Klick')), 8000)
-      browser2.once('targetcreated', async target => {
-        clearTimeout(timeout)
-        const url = target.url()
-        resolve(url)
-      })
+    // All PDF links are embedded in the Wix JS data blobs in the HTML.
+    // Find the PDF URL that appears closest AFTER the word "wochenkarte".
+    const pdfUrl = await page.evaluate(() => {
+      const html = document.documentElement.innerHTML
+      const lower = html.toLowerCase()
+
+      // Find all positions of "wochenkarte"
+      const wochenPositions: number[] = []
+      let pos = 0
+      while ((pos = lower.indexOf('wochenkarte', pos)) !== -1) {
+        wochenPositions.push(pos)
+        pos++
+      }
+
+      // Find all PDF URLs and their positions
+      const pdfRegex = /https:\/\/[^"'\s\\]{10,}\.pdf/gi
+      let m: RegExpExecArray | null
+      const pdfs: { url: string; idx: number }[] = []
+      while ((m = pdfRegex.exec(html)) !== null) {
+        pdfs.push({ url: m[0], idx: m.index })
+      }
+
+      if (pdfs.length === 0) return null
+
+      // For each "wochenkarte" occurrence, find the nearest PDF URL within 5000 chars after it
+      for (const wPos of wochenPositions) {
+        const nearby = pdfs.filter(p => p.idx > wPos && p.idx < wPos + 5000)
+        if (nearby.length > 0) return nearby[0].url
+      }
+
+      // Fallback: return any ugd PDF (last resort)
+      const ugd = pdfs.find(p => p.url.includes('ugd/b086f8'))
+      return ugd?.url ?? null
     })
 
-    // Click "Wochenkarte öffnen"
+    if (pdfUrl) return pdfUrl
+
+    // If still not found, try intercepted request from clicking
     await page.evaluate(() => {
       const all = Array.from(document.querySelectorAll('*'))
-      const el = all.find(e =>
-        e.textContent?.toLowerCase().includes('wochenkarte') &&
-        (e.tagName === 'A' || e.tagName === 'BUTTON' || e.getAttribute('role') === 'button' || e.children.length === 0)
-      )
+      const el = all.find(e => e.textContent?.toLowerCase().includes('wochenkarte öffnen'))
       if (el) (el as HTMLElement).click()
     })
-
-    try {
-      const newUrl = await newPagePromise
-      if (newUrl && newUrl.includes('.pdf')) return newUrl
-      // If new tab URL isn't a PDF directly, check intercepted requests
-      if (interceptedPdfUrl) return interceptedPdfUrl
-    } catch {
-      if (interceptedPdfUrl) return interceptedPdfUrl
-    }
+    await new Promise(r => setTimeout(r, 3000))
+    if (interceptedPdfUrl) return interceptedPdfUrl
 
     throw new Error('Keine Wochenkarte-PDF auf sandwicher.de/bestellen gefunden')
   } finally {
