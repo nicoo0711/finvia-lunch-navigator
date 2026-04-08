@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { RESTAURANTS, RestaurantMenu, DayMenu, MenuItem } from '@/lib/types'
 import { GambleWheel } from './GambleWheel'
+import { VoteBar } from './VoteBar'
 import styles from './page.module.css'
 
 type Filter = 'alle' | 'vegan' | 'vegetarisch' | 'glutenfrei' | 'unter10'
@@ -55,12 +56,70 @@ export default function Home() {
   const weekDates = getWeekDates()
   const selectedDate = weekDates[selectedDay]
 
+  // Voting
+  const [votes, setVotes] = useState<Record<string, string[]>>({})
+  const [myName, setMyName] = useState<string | null>(null)
+  const [showNameModal, setShowNameModal] = useState(false)
+  const [nameInput, setNameInput] = useState('')
+  const [pendingVote, setPendingVote] = useState<string | null>(null)
+
   useEffect(() => {
     fetch('/api/menu')
       .then((r) => r.json())
       .then((data) => { setMenus(data); setLoading(false) })
       .catch(() => setLoading(false))
   }, [])
+
+  // Load name from localStorage
+  useEffect(() => {
+    const stored = localStorage.getItem('lunch-name')
+    if (stored) setMyName(stored)
+  }, [])
+
+  // Load + poll votes for selected date
+  useEffect(() => {
+    function fetchVotes() {
+      fetch(`/api/votes?date=${selectedDate}`)
+        .then(r => r.json())
+        .then(setVotes)
+        .catch(() => {})
+    }
+    fetchVotes()
+    const interval = setInterval(fetchVotes, 20000)
+    return () => clearInterval(interval)
+  }, [selectedDate])
+
+  async function submitVote(restaurantId: string, name: string) {
+    const isMine = (votes[restaurantId] ?? []).some(n => n.toLowerCase() === name.toLowerCase())
+    const res = await fetch('/api/votes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ date: selectedDate, restaurantId: isMine ? '__remove__' : restaurantId, name }),
+    })
+    if (res.ok) setVotes(await res.json())
+  }
+
+  function handleVoteClick(restaurantId: string) {
+    if (!myName) {
+      setPendingVote(restaurantId)
+      setShowNameModal(true)
+      return
+    }
+    submitVote(restaurantId, myName)
+  }
+
+  function confirmName() {
+    const trimmed = nameInput.trim()
+    if (!trimmed) return
+    localStorage.setItem('lunch-name', trimmed)
+    setMyName(trimmed)
+    setShowNameModal(false)
+    setNameInput('')
+    if (pendingVote) {
+      submitVote(pendingVote, trimmed)
+      setPendingVote(null)
+    }
+  }
 
   function getMenuForDate(restaurantId: string, weekly?: boolean): DayMenu | null {
     const menu = menus.find((m) => m.restaurantId === restaurantId)
@@ -80,6 +139,24 @@ export default function Home() {
 
   return (
     <main className={styles.main}>
+      {showNameModal && (
+        <div className={styles.modalOverlay} onClick={() => setShowNameModal(false)}>
+          <div className={styles.modal} onClick={e => e.stopPropagation()}>
+            <p className={styles.modalTitle}>Wie heißt du?</p>
+            <p className={styles.modalSub}>Damit andere sehen können, wer mitkommt.</p>
+            <input
+              className={styles.modalInput}
+              placeholder="Dein Name"
+              value={nameInput}
+              onChange={e => setNameInput(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && confirmName()}
+              autoFocus
+              maxLength={30}
+            />
+            <button className={styles.modalBtn} onClick={confirmName}>Bestätigen</button>
+          </div>
+        </div>
+      )}
       <header className={styles.header}>
         <div className={styles.headerInner}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -266,6 +343,13 @@ export default function Home() {
                       ))}
                     </div>
                   )}
+
+                  <VoteBar
+                    restaurantId={restaurant.id}
+                    votes={votes}
+                    myName={myName}
+                    onVote={handleVoteClick}
+                  />
 
                   <div className={styles.cardFooter}>
                     <span className={styles.statusDot} />

@@ -326,3 +326,68 @@
 .nearbyTageskarte:hover { opacity: 0.7; }
 
 .dailySection { }
+
+/* ── Name Modal ── */
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 1rem;
+}
+
+.modal {
+  background: var(--surface, #fff);
+  border-radius: var(--radius, 12px);
+  padding: 1.75rem;
+  width: 100%;
+  max-width: 360px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+}
+
+.modalTitle {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 0.5rem;
+}
+
+.modalSub {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 1.25rem;
+}
+
+.modalInput {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1.5px solid var(--border, #e0e0e0);
+  border-radius: 8px;
+  font-size: 15px;
+  outline: none;
+  margin-bottom: 1rem;
+  box-sizing: border-box;
+  background: var(--bg, #fff);
+  color: var(--text);
+}
+
+.modalInput:focus {
+  border-color: #038B9B;
+}
+
+.modalBtn {
+  width: 100%;
+  padding: 11px;
+  border-radius: 8px;
+  border: none;
+  background: #038B9B;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.modalBtn:hover { background: #027080; }

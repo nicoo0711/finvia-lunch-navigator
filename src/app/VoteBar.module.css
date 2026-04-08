@@ -1,0 +1,73 @@
+.voteBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 16px;
+  border-top: 1px solid var(--border, #f0f0f0);
+  margin-top: 4px;
+  min-height: 44px;
+}
+
+.namePills {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  flex: 1;
+}
+
+.pill {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #e8f5f7;
+  color: #038B9B;
+  font-size: 10px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px rgba(3,139,155,0.2);
+}
+
+.pillMe {
+  background: #038B9B;
+  color: #fff;
+  box-shadow: 0 0 0 2px rgba(3,139,155,0.4);
+}
+
+.goingLabel {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-left: 2px;
+}
+
+.voteBtn {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1.5px solid #038B9B;
+  background: transparent;
+  color: #038B9B;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.voteBtn:hover {
+  background: rgba(3,139,155,0.08);
+}
+
+.voteBtnActive {
+  background: #038B9B;
+  color: #fff;
+}
+
+.voteBtnActive:hover {
+  background: #027080;
+}
