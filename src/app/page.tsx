@@ -146,7 +146,7 @@ export default function Home() {
             <p className={styles.modalSub}>Damit andere sehen können, wer mitkommt.</p>
             <input
               className={styles.modalInput}
-              placeholder="Dein Name"
+              placeholder="Vor- und Nachname"
               value={nameInput}
               onChange={e => setNameInput(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && confirmName()}
