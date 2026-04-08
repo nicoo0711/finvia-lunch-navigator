@@ -16,63 +16,45 @@ async function findPdfUrl(): Promise<string> {
   try {
     const page = await browser.newPage()
 
-    // Intercept network requests to catch the PDF URL directly
+    // Load page fully before intercepting — so we don't catch the catering PDF
+    // that auto-loads during page init
+    await page.goto('https://www.sandwicher.de/bestellen', { waitUntil: 'networkidle0', timeout: 30000 })
+    await new Promise(r => setTimeout(r, 2000))
+
+    // Only NOW set up the interceptor, so only the click-triggered request is caught
     let interceptedPdfUrl: string | null = null
     page.on('request', req => {
       const url = req.url()
-      if (url.includes('.pdf') && (url.includes('ugd') || url.includes('sandwicher'))) {
+      if (url.includes('.pdf') && url.includes('ugd')) {
         interceptedPdfUrl = url
       }
     })
 
-    // Navigate to the ordering page and wait for Wix JS to inject page data
-    await page.goto('https://www.sandwicher.de/bestellen', { waitUntil: 'networkidle0', timeout: 30000 })
-    await new Promise(r => setTimeout(r, 2000))
-
-    // All PDF links are embedded in the Wix JS data blobs in the HTML.
-    // Find the PDF URL that appears closest AFTER the word "wochenkarte".
-    const pdfUrl = await page.evaluate(() => {
-      const html = document.documentElement.innerHTML
-      const lower = html.toLowerCase()
-
-      // Find all positions of "wochenkarte"
-      const wochenPositions: number[] = []
-      let pos = 0
-      while ((pos = lower.indexOf('wochenkarte', pos)) !== -1) {
-        wochenPositions.push(pos)
-        pos++
-      }
-
-      // Find all PDF URLs and their positions
-      const pdfRegex = /https:\/\/[^"'\s\\]{10,}\.pdf/gi
-      let m: RegExpExecArray | null
-      const pdfs: { url: string; idx: number }[] = []
-      while ((m = pdfRegex.exec(html)) !== null) {
-        pdfs.push({ url: m[0], idx: m.index })
-      }
-
-      if (pdfs.length === 0) return null
-
-      // For each "wochenkarte" occurrence, find the nearest PDF URL within 5000 chars after it
-      for (const wPos of wochenPositions) {
-        const nearby = pdfs.filter(p => p.idx > wPos && p.idx < wPos + 5000)
-        if (nearby.length > 0) return nearby[0].url
-      }
-
-      // Fallback: return any ugd PDF (last resort)
-      const ugd = pdfs.find(p => p.url.includes('ugd/b086f8'))
-      return ugd?.url ?? null
-    })
-
-    if (pdfUrl) return pdfUrl
-
-    // If still not found, try intercepted request from clicking
+    // Click "Wochenkarte öffnen" — find the leaf text node containing "wochenkarte"
+    // then walk up to the nearest clickable ancestor
     await page.evaluate(() => {
       const all = Array.from(document.querySelectorAll('*'))
-      const el = all.find(e => e.textContent?.toLowerCase().includes('wochenkarte öffnen'))
-      if (el) (el as HTMLElement).click()
+      // Find the innermost element whose own text (not children) contains "wochenkarte"
+      const el = all.find(e =>
+        e.children.length === 0 &&
+        e.textContent?.toLowerCase().includes('wochenkarte')
+      )
+      if (!el) return
+      // Walk up to find <a> or <button>, or the Wix comp root (div with role/click)
+      let target: Element | null = el
+      for (let i = 0; i < 8; i++) {
+        if (!target || target === document.body) break
+        if (target.tagName === 'A' || target.tagName === 'BUTTON') {
+          (target as HTMLElement).click()
+          return
+        }
+        target = target.parentElement
+      }
+      // No <a>/<button> found — click the leaf element itself
+      ;(el as HTMLElement).click()
     })
-    await new Promise(r => setTimeout(r, 3000))
+
+    await new Promise(r => setTimeout(r, 4000))
     if (interceptedPdfUrl) return interceptedPdfUrl
 
     throw new Error('Keine Wochenkarte-PDF auf sandwicher.de/bestellen gefunden')
@@ -123,8 +105,8 @@ export async function scrapeSandwicher(): Promise<RestaurantMenu> {
 
   const parsed = JSON.parse(jsonMatch[0]) as { date: string; name: string; price: number }[]
 
-  // Remap PDF dates to the current week by weekday position.
-  // Ensures menu always appears even if the PDF has last week's dates.
+  // Remap PDF dates to the current week by weekday.
+  // Ensures menu shows even if PDF still has last week's dates.
   const now = new Date()
   const dow = now.getDay()
   const thisMonday = new Date(now)
