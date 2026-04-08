@@ -1,7 +1,7 @@
 import { DayMenu, MenuItem, RestaurantMenu } from '../types'
 import Anthropic from '@anthropic-ai/sdk'
 
-const PDF_URL = 'https://www.sandwicher.de/_files/ugd/b086f8_79b9e10a28f54650ac4199e6abdeb517.pdf'
+const PDF_URL = 'https://www.sandwicher.de/_files/ugd/b086f8_efad15618a2044f388aae4c8f1e78639.pdf'
 
 function parseTags(name: string): MenuItem['tags'] {
   const lower = name.toLowerCase()
