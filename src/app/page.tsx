@@ -243,6 +243,12 @@ export default function Home() {
                       <p className={styles.nearbyTageskarte} style={{ cursor: 'default' }}>Keine Menüdaten verfügbar.</p>
                     )
                   )}
+                  <VoteBar
+                    restaurantId={restaurant.id}
+                    votes={votes}
+                    myName={myName}
+                    onVote={handleVoteClick}
+                  />
                 </div>
               )
             })}
@@ -343,13 +349,6 @@ export default function Home() {
                       ))}
                     </div>
                   )}
-
-                  <VoteBar
-                    restaurantId={restaurant.id}
-                    votes={votes}
-                    myName={myName}
-                    onVote={handleVoteClick}
-                  />
 
                   <div className={styles.cardFooter}>
                     <span className={styles.statusDot} />
