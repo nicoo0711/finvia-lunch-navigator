@@ -197,7 +197,7 @@ export default function Home() {
         {activeTab === 'restaurants' && (<section className={styles.nearbySection}>
           <h2 className={styles.sectionTitle}>Restaurants in der Nähe</h2>
           <div className={styles.nearbyGrid}>
-            {RESTAURANTS.map((restaurant) => {
+            {[...RESTAURANTS].sort((a, b) => (votes[b.id]?.length ?? 0) - (votes[a.id]?.length ?? 0)).map((restaurant) => {
               const menu = menus.find((m) => m.restaurantId === restaurant.id)
               const scrapedItems = menu
                 ? menu.days.flatMap((d) => d.items).filter((item, idx, arr) => arr.findIndex(x => x.name === item.name) === idx)
