@@ -117,6 +117,8 @@ export function GambleWheel({ restaurants }: { restaurants: Restaurant[] }) {
         </div>
       )}
 
+      <div className={styles.wheelRow}>
+      <div className={styles.wheelCol}>
       <div className={styles.wheelWrap}>
         <div className={styles.pointer}>▼</div>
 
@@ -160,6 +162,7 @@ export function GambleWheel({ restaurants }: { restaurants: Restaurant[] }) {
       <button className={styles.spinBtn} onClick={spin} disabled={spinning || n === 0}>
         {spinning ? 'Dreht…' : '🎰 Drehen!'}
       </button>
+      </div>{/* wheelCol */}
 
       <div className={styles.pickerSection}>
         <p className={styles.pickerTitle}>Teilnehmer auswählen</p>
@@ -184,6 +187,7 @@ export function GambleWheel({ restaurants }: { restaurants: Restaurant[] }) {
           })}
         </div>
       </div>
+      </div>{/* wheelRow */}
     </div>
   )
 }

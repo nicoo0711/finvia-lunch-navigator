@@ -6,6 +6,21 @@
   gap: 1.5rem;
 }
 
+.wheelRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 2rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.wheelCol {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+}
+
 .subtitle {
   font-size: 14px;
   color: var(--text-muted);
@@ -137,9 +152,8 @@
 
 /* ── Picker ── */
 .pickerSection {
-  width: 100%;
-  max-width: 560px;
-  margin-top: 0.5rem;
+  max-width: 220px;
+  margin-top: 2.5rem;
 }
 
 .pickerTitle {
@@ -154,9 +168,8 @@
 
 .pickerGrid {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  justify-content: center;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .pickerPill {
