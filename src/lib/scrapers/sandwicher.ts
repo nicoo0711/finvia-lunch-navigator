@@ -8,54 +8,76 @@ async function findPdfUrl(): Promise<string> {
     'https://github.com/Sparticuz/chromium/releases/download/v131.0.1/chromium-v131.0.1-pack.tar'
   )
   const browser = await puppeteer.launch({
-    args: chromium.args,
+    args: [...chromium.args, '--disable-popup-blocking'],
     defaultViewport: { width: 1280, height: 800 },
     executablePath: execPath,
     headless: true,
   })
   try {
     const page = await browser.newPage()
-
-    // Load page fully before intercepting — so we don't catch the catering PDF
-    // that auto-loads during page init
     await page.goto('https://www.sandwicher.de/bestellen', { waitUntil: 'networkidle0', timeout: 30000 })
-    await new Promise(r => setTimeout(r, 2000))
+    await new Promise(r => setTimeout(r, 3000))
 
-    // Only NOW set up the interceptor, so only the click-triggered request is caught
-    let interceptedPdfUrl: string | null = null
-    page.on('request', req => {
-      const url = req.url()
-      if (url.includes('.pdf') && url.includes('ugd')) {
-        interceptedPdfUrl = url
+    // Strategy 1: find <a href="...pdf"> near "wochenkarte" text in fully rendered DOM
+    const fromHref = await page.evaluate(() => {
+      // Check all <a> tags for PDF href
+      const links = Array.from(document.querySelectorAll('a[href]'))
+      for (const a of links) {
+        const href = (a as HTMLAnchorElement).href
+        if (href.includes('.pdf') && href.includes('ugd')) {
+          // Is this link near "wochenkarte" text?
+          const container = a.closest('[id], [data-testid], section') ?? document.body
+          if (container.textContent?.toLowerCase().includes('wochenkarte')) return href
+          // Or does the link itself contain wochenkarte text?
+          if (a.textContent?.toLowerCase().includes('wochenkarte')) return href
+        }
       }
+      // Fallback: any PDF link on the page
+      for (const a of links) {
+        const href = (a as HTMLAnchorElement).href
+        if (href.includes('.pdf') && href.includes('ugd')) return href
+      }
+      return null
+    })
+    if (fromHref) return fromHref
+
+    // Strategy 2: listen for new tab opened by window.open() after clicking button
+    const newTabPromise = new Promise<string | null>(resolve => {
+      const timer = setTimeout(() => resolve(null), 6000)
+      browser.on('targetcreated', async target => {
+        const url = target.url()
+        if (url.includes('.pdf') || url.includes('ugd')) {
+          clearTimeout(timer)
+          resolve(url)
+        } else {
+          // Wait for the new page to navigate to the PDF
+          try {
+            const newPage = await target.page()
+            if (newPage) {
+              newPage.once('response', resp => {
+                if (resp.url().includes('.pdf')) {
+                  clearTimeout(timer)
+                  resolve(resp.url())
+                }
+              })
+            }
+          } catch { /* ignore */ }
+        }
+      })
     })
 
-    // Click "Wochenkarte öffnen" — find the leaf text node containing "wochenkarte"
-    // then walk up to the nearest clickable ancestor
+    // Click the "Wochenkarte öffnen" button
     await page.evaluate(() => {
       const all = Array.from(document.querySelectorAll('*'))
-      // Find the innermost element whose own text (not children) contains "wochenkarte"
       const el = all.find(e =>
         e.children.length === 0 &&
         e.textContent?.toLowerCase().includes('wochenkarte')
       )
-      if (!el) return
-      // Walk up to find <a> or <button>, or the Wix comp root (div with role/click)
-      let target: Element | null = el
-      for (let i = 0; i < 8; i++) {
-        if (!target || target === document.body) break
-        if (target.tagName === 'A' || target.tagName === 'BUTTON') {
-          (target as HTMLElement).click()
-          return
-        }
-        target = target.parentElement
-      }
-      // No <a>/<button> found — click the leaf element itself
-      ;(el as HTMLElement).click()
+      if (el) (el as HTMLElement).click()
     })
 
-    await new Promise(r => setTimeout(r, 4000))
-    if (interceptedPdfUrl) return interceptedPdfUrl
+    const tabUrl = await newTabPromise
+    if (tabUrl) return tabUrl
 
     throw new Error('Keine Wochenkarte-PDF auf sandwicher.de/bestellen gefunden')
   } finally {
@@ -105,8 +127,7 @@ export async function scrapeSandwicher(): Promise<RestaurantMenu> {
 
   const parsed = JSON.parse(jsonMatch[0]) as { date: string; name: string; price: number }[]
 
-  // Remap PDF dates to the current week by weekday.
-  // Ensures menu shows even if PDF still has last week's dates.
+  // Remap PDF dates to current week by weekday — works even if PDF has old dates
   const now = new Date()
   const dow = now.getDay()
   const thisMonday = new Date(now)
