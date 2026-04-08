@@ -243,7 +243,7 @@ export const RESTAURANTS: Restaurant[] = [
     scrapeType: 'manual',
     emoji: '🍕',
     color: '#FFF0F0',
-    logo: 'https://www.google.com/s2/favicons?domain=maria-e-giovanni.de&sz=64',
+    logo: 'https://maria-e-giovanni.de/wp-content/uploads/2021/02/IMG_1953.png',
     staticItems: [
       { name: 'Mittagsmenü (wechselt täglich) → Tageskarte' },
     ],
