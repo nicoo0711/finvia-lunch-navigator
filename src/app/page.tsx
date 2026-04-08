@@ -196,7 +196,7 @@ export default function Home() {
         {/* Restaurants in der Nähe */}
         {activeTab === 'restaurants' && (<section className={styles.nearbySection}>
           <div className={styles.sectionHeader}>
-            <h2 className={styles.sectionTitle}>Restaurants in der Nähe · {formatDate(selectedDate)}</h2>
+            <h2 className={styles.sectionTitle}>Wo essen wir heute? · {formatDate(selectedDate)}</h2>
             <div className={styles.officeCard}>
               <div className={styles.officeCardTop}>
                 <span className={styles.officeIcon}>🏠</span>
