@@ -43,12 +43,35 @@ export async function scrapeSandwicher(): Promise<RestaurantMenu> {
 
   const parsed = JSON.parse(jsonMatch[0]) as { date: string; name: string; price: number }[]
 
+  // Remap PDF dates to the current week.
+  // Sandwicher may not update the PDF URL every week, so the dates in the PDF
+  // can lag behind. We preserve the weekday (Mon=this Mon, Tue=this Tue, ...)
+  // and replace the year/month/day with this week's corresponding date.
+  const now = new Date()
+  const dow = now.getDay() // 0=Sun
+  const thisMonday = new Date(now)
+  thisMonday.setDate(now.getDate() - (dow === 0 ? 6 : dow - 1))
+  thisMonday.setHours(0, 0, 0, 0)
+
+  function remapToCurrentWeek(isoDate: string): string {
+    const d = new Date(isoDate + 'T12:00:00Z')
+    const wd = d.getUTCDay() // 0=Sun,1=Mon,...
+    const offset = wd === 0 ? 6 : wd - 1 // days from Monday
+    const mapped = new Date(thisMonday)
+    mapped.setDate(thisMonday.getDate() + offset)
+    const y = mapped.getFullYear()
+    const m = String(mapped.getMonth() + 1).padStart(2, '0')
+    const day = String(mapped.getDate()).padStart(2, '0')
+    return `${y}-${m}-${day}`
+  }
+
   const dayMap = new Map<string, MenuItem[]>()
   for (const item of parsed) {
     const date = item.date || ''
-    if (!date) continue
-    if (!dayMap.has(date)) dayMap.set(date, [])
-    dayMap.get(date)!.push({ name: item.name, price: item.price, tags: parseTags(item.name) })
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) continue
+    const remapped = remapToCurrentWeek(date)
+    if (!dayMap.has(remapped)) dayMap.set(remapped, [])
+    dayMap.get(remapped)!.push({ name: item.name, price: item.price, tags: parseTags(item.name) })
   }
 
   const days: DayMenu[] = Array.from(dayMap.entries())
