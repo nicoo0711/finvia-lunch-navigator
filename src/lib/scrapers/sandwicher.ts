@@ -41,17 +41,9 @@ async function findPdfUrl(): Promise<string> {
     })
     if (fromHref) return fromHref
 
-    // Strategy 2: override window.open to capture the URL before the new tab opens
-    await page.evaluate(() => {
-      (window as any).__capturedUrl = null
-      const orig = window.open.bind(window)
-      window.open = (...args: Parameters<typeof window.open>) => {
-        (window as any).__capturedUrl = args[0]
-        return orig(...args)
-      }
-    })
+    // Strategy 2: snapshot tabs before click, then diff after to find the new PDF tab
+    const urlsBefore = new Set(browser.targets().map(t => t.url()))
 
-    // Click the "Wochenkarte öffnen" button
     await page.evaluate(() => {
       const all = Array.from(document.querySelectorAll('*'))
       const el = all.find(e =>
@@ -61,10 +53,24 @@ async function findPdfUrl(): Promise<string> {
       if (el) (el as HTMLElement).click()
     })
 
-    await new Promise(r => setTimeout(r, 3000))
-
-    const capturedUrl: string | null = await page.evaluate(() => (window as any).__capturedUrl)
-    if (capturedUrl) return capturedUrl
+    // Wait for the new tab to appear and navigate to the PDF
+    for (let i = 0; i < 20; i++) {
+      await new Promise(r => setTimeout(r, 500))
+      for (const target of browser.targets()) {
+        const url = target.url()
+        if (!urlsBefore.has(url) && (url.includes('.pdf') || url.includes('ugd'))) {
+          return url
+        }
+        // New tab may still be loading — check its current URL
+        if (!urlsBefore.has(url) && url !== 'about:blank') {
+          try {
+            const newPage = await target.page()
+            const navUrl = newPage?.url() ?? ''
+            if (navUrl.includes('.pdf') || navUrl.includes('ugd')) return navUrl
+          } catch { /* ignore */ }
+        }
+      }
+    }
 
     throw new Error('Keine Wochenkarte-PDF auf sandwicher.de/bestellen gefunden')
   } finally {
