@@ -195,7 +195,7 @@ export default function Home() {
 
         {/* Restaurants in der Nähe */}
         {activeTab === 'restaurants' && (<section className={styles.nearbySection}>
-          <h2 className={styles.sectionTitle}>Restaurants in der Nähe</h2>
+          <h2 className={styles.sectionTitle}>Restaurants in der Nähe · {formatDate(selectedDate)}</h2>
           <div className={styles.nearbyGrid}>
             {[...RESTAURANTS].sort((a, b) => (votes[b.id]?.length ?? 0) - (votes[a.id]?.length ?? 0)).map((restaurant) => {
               const menu = menus.find((m) => m.restaurantId === restaurant.id)
